@@ -7,7 +7,7 @@ En interaktiv webbkalkylator för att beräkna bränslekostnaden för en bilresa
 ## Funktioner
 
 - **GPS-position** — hämtar användarens position och fyller i närmaste gatuadress automatiskt
-- **Adresssökning** — stöder fullständiga gatuadresser som startpunkt och destination (t.ex. *Tingbergsvägen 2c Kungsbacka*)
+- **Adresssökning** — stöder fullständiga gatuadresser som startpunkt och destination (t.ex. *Gatudaddress, stad*)
 - **Automatisk ruttberäkning** — beräknar körsträckan i svenska mil via [OSRM](http://router.project-osrm.org) när destination lämnas
 - **Interaktiv karta** — visar rutten med A/B-markörer via [Leaflet.js](https://leafletjs.com) + OpenStreetMap
 - **Fordonsval** — dropdown med 25+ bilmärken och modeller som autofyller förbrukning (l/10km)
