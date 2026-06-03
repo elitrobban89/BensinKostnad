@@ -1,0 +1,180 @@
+<!-- ╔═══════════════════════════════════════════════════════════════╗
+     ║  BENSINKOSTNADSBERÄKNING – WordPress Custom HTML Block        ║
+     ║  Klistra in detta i ett "Anpassad HTML"-block i Gutenberg.    ║
+     ╚═══════════════════════════════════════════════════════════════╝ -->
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+
+<!-- ════════════════ FORMULÄR ════════════════ -->
+<div class="bc-wrap">
+
+  <!-- 1. STRÄCKA -->
+  <div class="bc-card">
+    <div class="bc-card-title">
+      <span class="bc-num">1</span> Sträcka
+    </div>
+
+    <div class="bc-two-col">
+      <div class="bc-field">
+        <label for="bc-start">Startpunkt</label>
+        <div class="bc-gps-row">
+          <div class="bc-input-wrap">
+            <input id="bc-start" type="text" placeholder="t.ex. Malmö">
+          </div>
+          <button class="bc-gps-btn" id="bc-gpsBtn" title="Hämta GPS-position">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
+            </svg>
+            <span id="bc-gpsBtnLabel">Hämta GPS</span>
+          </button>
+        </div>
+        <p class="bc-hint" id="bc-gpsHint"></p>
+      </div>
+      <div class="bc-field">
+        <label for="bc-dest">Destination</label>
+        <div class="bc-input-wrap">
+          <input id="bc-dest" type="text" placeholder="t.ex. Stockholm">
+        </div>
+      </div>
+    </div>
+
+    <div class="bc-field">
+      <label for="bc-km">Körsträcka</label>
+      <div class="bc-input-wrap">
+        <input id="bc-km" type="number" class="bc-has-unit"
+               min="0" step="0.1" placeholder="t.ex. 61.2" inputmode="decimal">
+        <span class="bc-unit">mil</span>
+      </div>
+      <p class="bc-hint">Ange i svenska mil. 1 mil = 10 km. Fylls i automatiskt om GPS och destination är angivna.</p>
+    </div>
+  </div>
+
+  <!-- 2. FORDON -->
+  <div class="bc-card">
+    <div class="bc-card-title">
+      <span class="bc-num">2</span> Fordon &amp; förbrukning
+    </div>
+
+    <div class="bc-two-col">
+      <div class="bc-field">
+        <label for="bc-brand">Märke</label>
+        <div class="bc-input-wrap">
+          <select id="bc-brand">
+            <option value="">Välj märke...</option>
+          </select>
+        </div>
+      </div>
+      <div class="bc-field">
+        <label for="bc-model">Modell</label>
+        <div class="bc-input-wrap">
+          <select id="bc-model" disabled>
+            <option value="">Välj modell...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="bc-field">
+      <label for="bc-cons">Genomsnittlig förbrukning</label>
+      <div class="bc-input-wrap">
+        <input id="bc-cons" type="number" class="bc-has-unit"
+               min="0.01" max="5" step="0.01"
+               placeholder="t.ex. 0.85" inputmode="decimal">
+        <span class="bc-unit">l/10km</span>
+      </div>
+      <p class="bc-hint">Fylls i automatiskt vid fordonsval &mdash; kan justeras manuellt. Liten bil ca 0,5–0,6 &bull; mellanklass ca 0,7–0,9 &bull; SUV ca 0,9–1,2</p>
+    </div>
+  </div>
+
+  <!-- 3. BRÄNSLEPRIS -->
+  <div class="bc-card">
+    <div class="bc-card-title">
+      <span class="bc-num">3</span> Bränslepris
+    </div>
+
+    <div class="bc-field">
+      <label for="bc-price">Pris per liter</label>
+      <div class="bc-input-wrap">
+        <input id="bc-price" type="number" class="bc-has-unit"
+               min="0" step="0.01"
+               placeholder="t.ex. 19.50" inputmode="decimal">
+        <span class="bc-unit">SEK/l</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORMEL -->
+  <div class="bc-formula">
+    <h3>Formel</h3>
+    <div class="bc-fline">
+      <span class="bc-flabel">Liter åtgång</span>
+      <span class="bc-feq">=</span>
+      <span class="bc-fexpr">mil × förbrukning (l/10km)</span>
+    </div>
+    <div class="bc-fline">
+      <span class="bc-flabel">Total kostnad</span>
+      <span class="bc-feq">=</span>
+      <span class="bc-fexpr">liter åtgång × pris per liter (SEK)</span>
+    </div>
+  </div>
+
+  <!-- FELMEDDELANDE -->
+  <div class="bc-error" id="bc-error"></div>
+
+  <!-- KNAPP -->
+  <button class="bc-btn" id="bc-calcBtn">Räkna ut kostnaden</button>
+
+  <!-- STATUS -->
+  <div class="bc-calc-status" id="bc-calcStatus"></div>
+
+  <!-- KARTA -->
+  <div class="bc-map-card" id="bc-mapCard">
+    <div class="bc-map-title">🗺 Rutt</div>
+    <div id="bc-map"></div>
+  </div>
+
+  <!-- RESULTAT -->
+  <div class="bc-results" id="bc-results">
+    <div class="bc-res-header">Beräknat resultat</div>
+    <div class="bc-res-grid">
+
+      <div class="bc-res-item">
+        <div class="bc-rlabel">Sträcka</div>
+        <div class="bc-rvalue" id="bc-rKm">—</div>
+        <div class="bc-runit">kilometer</div>
+      </div>
+
+      <div class="bc-res-item">
+        <div class="bc-rlabel">Sträcka</div>
+        <div class="bc-rvalue" id="bc-rMil">—</div>
+        <div class="bc-runit">svenska mil</div>
+      </div>
+
+      <div class="bc-res-item">
+        <div class="bc-rlabel">Bränsleåtgång</div>
+        <div class="bc-rvalue" id="bc-rLiters">—</div>
+        <div class="bc-runit">liter</div>
+      </div>
+
+      <div class="bc-res-item bc-big">
+        <div class="bc-rlabel">Total bränslekostnad</div>
+        <div class="bc-rvalue" id="bc-rCost">—</div>
+        <div class="bc-runit">svenska kronor (SEK)</div>
+      </div>
+
+    </div>
+
+    <div class="bc-trace">
+      <h4>Uträkning steg för steg</h4>
+      <div class="bc-tline" id="bc-t1"></div>
+      <div class="bc-tline" id="bc-t2"></div>
+      <div class="bc-tline" id="bc-t3"></div>
+      <div class="bc-tline" id="bc-t4"></div>
+    </div>
+  </div>
+
+</div><!-- /bc-wrap -->
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
