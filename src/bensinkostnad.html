@@ -405,14 +405,73 @@
     .trace-line:last-child { margin-bottom: 0; }
     .trace-line .arrow { color: #3b82f6; font-weight: 700; flex-shrink: 0; }
     .trace-line .val { font-weight: 700; color: #1e40af; font-family: 'Courier New', monospace; }
+
+    /* ── Fuel type badges ── */
+    .fuel-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .fuel-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1.5px solid transparent;
+    }
+    .fuel-badge.petrol  { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; opacity: 0.45; }
+    .fuel-badge.diesel  { background: #f3f4f6; border-color: #d1d5db; color: #374151; opacity: 0.45; }
+    .fuel-badge.electric { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; opacity: 0.45; }
+    .fuel-badge.active  { opacity: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.10); }
+    .fuel-badge svg { flex-shrink: 0; }
+
+    /* ── Header support line ── */
+    .header-fuel-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .header-fuel-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .header-fuel-pill.petrol  { background: #eff6ff; color: #1d4ed8; }
+    .header-fuel-pill.diesel  { background: #f3f4f6; color: #374151; }
+    .header-fuel-pill.electric { background: #f0fdf4; color: #15803d; }
   </style>
 </head>
 <body>
 <div class="container">
 
   <div class="header">
-    <h1>Bensinkostnad</h1>
+    <h1>Bränsle&shy;kostnad</h1>
     <p>Ange dina uppgifter nedan och räkna ut vad resan kostar i bränsle.</p>
+    <div class="header-fuel-row">
+      <span class="header-fuel-pill petrol">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 10h12"/><path d="M15 6h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><line x1="3" y1="22" x2="21" y2="22"/></svg>
+        Bensin
+      </span>
+      <span class="header-fuel-pill diesel">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+        Diesel
+      </span>
+      <span class="header-fuel-pill electric">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        El
+      </span>
+    </div>
   </div>
 
   <!-- STRÄCKA -->
@@ -457,6 +516,20 @@
   <!-- FORDON & FÖRBRUKNING -->
   <div class="card">
     <div class="card-label"><span class="num">2</span> Fordon &amp; förbrukning</div>
+    <div class="fuel-badges">
+      <span class="fuel-badge petrol">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 10h12"/><path d="M15 6h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><line x1="3" y1="22" x2="21" y2="22"/></svg>
+        Bensin
+      </span>
+      <span class="fuel-badge diesel">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+        Diesel
+      </span>
+      <span class="fuel-badge electric">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        El
+      </span>
+    </div>
 
     <div class="two-col">
       <div class="field">
@@ -481,24 +554,25 @@
       <label for="consumption">Genomsnittlig förbrukning</label>
       <div class="input-wrap">
         <input id="consumption" type="number" class="has-unit"
-               min="0.01" max="5" step="0.01" placeholder="t.ex. 0.85" inputmode="decimal">
-        <span class="unit">l/10km</span>
+               min="0.01" max="30" step="0.01" placeholder="t.ex. 0.85" inputmode="decimal">
+        <span class="unit" id="consumptionUnit">l/10km</span>
       </div>
-      <p class="hint">Fylls i automatiskt vid fordonsval &mdash; kan justeras manuellt. Liten bil ca 0,5–0,6 &bull; mellanklass ca 0,7–0,9 &bull; SUV ca 0,9–1,2</p>
+      <p class="hint" id="consumptionHint">Fylls i automatiskt vid fordonsval &mdash; kan justeras manuellt. Liten bil ca 0,5–0,6 &bull; mellanklass ca 0,7–0,9 &bull; SUV ca 0,9–1,2</p>
     </div>
   </div>
 
   <!-- BRÄNSLEPRIS -->
   <div class="card">
-    <div class="card-label"><span class="num">3</span> Bränslepris</div>
+    <div class="card-label"><span class="num">3</span> <span id="card3Header">Bränslepris</span></div>
 
     <div class="field">
-      <label for="fuelPrice">Pris per liter</label>
+      <label for="fuelPrice" id="fuelPriceLabel">Pris per liter</label>
       <div class="input-wrap">
         <input id="fuelPrice" type="number" class="has-unit"
                min="0" step="0.01" placeholder="t.ex. 19.50" inputmode="decimal">
-        <span class="unit">SEK/l</span>
+        <span class="unit" id="fuelPriceUnit">SEK/l</span>
       </div>
+      <p class="hint" id="fuelPriceHint"></p>
     </div>
   </div>
 
@@ -506,14 +580,14 @@
   <div class="formula-box">
     <h3>Formel</h3>
     <div class="formula-line">
-      <span class="f-label">Liter åtgång</span>
+      <span class="f-label" id="formulaLine1Label">Liter åtgång</span>
       <span class="f-eq">=</span>
-      <span class="f-expr">mil × l/10km</span>
+      <span class="f-expr" id="formulaLine1Expr">mil × l/10km</span>
     </div>
     <div class="formula-line">
       <span class="f-label">Total kostnad</span>
       <span class="f-eq">=</span>
-      <span class="f-expr">liter × SEK/liter</span>
+      <span class="f-expr" id="formulaLine2Expr">liter × SEK/liter</span>
     </div>
   </div>
 
@@ -547,9 +621,9 @@
         <div class="rc-unit">svenska mil</div>
       </div>
       <div class="result-card">
-        <div class="rc-label">Bränsleåtgång</div>
+        <div class="rc-label" id="resLitersLabel">Bränsleåtgång</div>
         <div class="rc-value" id="resLiters">—</div>
-        <div class="rc-unit">liter</div>
+        <div class="rc-unit" id="resLitersUnit">liter</div>
       </div>
       <div class="result-card big">
         <div class="rc-label">Total bränslekostnad</div>
@@ -572,35 +646,104 @@
 <script>
 // ── GPS state ────────────────────────────────────────────────────────────────
 let startLat = null, startLon = null, leafletMap = null, routeLayer = null;
+let isElectric = false, isDiesel = false;
+
+function setFuelMode(mode) { // 'petrol' | 'diesel' | 'electric'
+  isElectric = mode === 'electric';
+  isDiesel   = mode === 'diesel';
+
+  // Highlight the active fuel-type badge
+  document.querySelectorAll('.fuel-badge').forEach(b => b.classList.remove('active'));
+  const badgeClass = { petrol: 'petrol', diesel: 'diesel', electric: 'electric' }[mode];
+  document.querySelectorAll(`.fuel-badge.${badgeClass}`).forEach(b => b.classList.add('active'));
+
+  const consumptionUnit = document.getElementById('consumptionUnit');
+  const consumptionHint = document.getElementById('consumptionHint');
+  const fuelPriceLabel  = document.getElementById('fuelPriceLabel');
+  const fuelPriceUnit   = document.getElementById('fuelPriceUnit');
+  const fuelPriceHint   = document.getElementById('fuelPriceHint');
+  const card3Header     = document.getElementById('card3Header');
+  const formula1Label   = document.getElementById('formulaLine1Label');
+  const formula1Expr    = document.getElementById('formulaLine1Expr');
+  const formula2Expr    = document.getElementById('formulaLine2Expr');
+  const resLitersLabel  = document.getElementById('resLitersLabel');
+  const resLitersUnit   = document.getElementById('resLitersUnit');
+  const fuelPriceInput  = document.getElementById('fuelPrice');
+
+  if (isElectric) {
+    consumptionUnit.textContent = 'kWh/mil';
+    consumptionHint.textContent = 'En elbil drar i genomsnitt 1,5 till 2,0 kWh per mil. Ange din bils förbrukning i kWh/mil.';
+    fuelPriceLabel.textContent  = 'Pris per kWh';
+    fuelPriceUnit.textContent   = 'SEK/kWh';
+    fuelPriceHint.textContent   = 'Hemmaladdning ca 1–2 SEK/kWh · Snabbladdning ca 3–6 SEK/kWh';
+    card3Header.textContent     = 'Laddningspris';
+    formula1Label.textContent   = 'kWh åtgång';
+    formula1Expr.textContent    = 'mil × kWh/mil';
+    formula2Expr.textContent    = 'kWh × SEK/kWh';
+    resLitersLabel.textContent  = 'Energiåtgång';
+    resLitersUnit.textContent   = 'kWh';
+    fuelPriceInput.placeholder  = 't.ex. 2.50';
+  } else if (isDiesel) {
+    consumptionUnit.textContent = 'l/10km';
+    consumptionHint.innerHTML   = 'Dieselförbrukning per 10 km. Kompakt ca 0,5 &bull; mellanklass ca 0,55–0,65 &bull; SUV ca 0,65–0,80';
+    fuelPriceLabel.textContent  = 'Pris per liter (diesel)';
+    fuelPriceUnit.textContent   = 'SEK/l';
+    fuelPriceHint.textContent   = 'Dieselpriset i Sverige ligger vanligtvis ca 1–2 kr lägre än bensin.';
+    card3Header.textContent     = 'Dieselpris';
+    formula1Label.textContent   = 'Liter åtgång';
+    formula1Expr.textContent    = 'mil × l/10km';
+    formula2Expr.textContent    = 'liter × SEK/liter';
+    resLitersLabel.textContent  = 'Dieselåtgång';
+    resLitersUnit.textContent   = 'liter';
+    fuelPriceInput.placeholder  = 't.ex. 18.50';
+  } else {
+    consumptionUnit.textContent = 'l/10km';
+    consumptionHint.innerHTML   = 'Fylls i automatiskt vid fordonsval &mdash; kan justeras manuellt. Liten bil ca 0,5–0,6 &bull; mellanklass ca 0,7–0,9 &bull; SUV ca 0,9–1,2';
+    fuelPriceLabel.textContent  = 'Pris per liter';
+    fuelPriceUnit.textContent   = 'SEK/l';
+    fuelPriceHint.textContent   = '';
+    card3Header.textContent     = 'Bränslepris';
+    formula1Label.textContent   = 'Liter åtgång';
+    formula1Expr.textContent    = 'mil × l/10km';
+    formula2Expr.textContent    = 'liter × SEK/liter';
+    resLitersLabel.textContent  = 'Bränsleåtgång';
+    resLitersUnit.textContent   = 'liter';
+    fuelPriceInput.placeholder  = 't.ex. 19.50';
+  }
+}
 
 // Förbrukning i l/10km (= l/mil). null = elbil.
 const CAR_DB = {
-  "Audi":           { "A1":0.60,"A3":0.65,"A4":0.75,"A5":0.80,"A6":0.85,"A7":0.90,"A8":1.10,"Q2":0.65,"Q3":0.75,"Q5":0.90,"Q7":1.10,"Q8":1.20,"TT":0.80,"e-tron (el)":null },
-  "BMW":            { "1-serie":0.65,"2-serie":0.70,"3-serie":0.75,"4-serie":0.80,"5-serie":0.85,"7-serie":1.15,"X1":0.75,"X2":0.75,"X3":0.85,"X4":0.90,"X5":1.05,"X6":1.15,"X7":1.30,"iX (el)":null,"i4 (el)":null },
-  "Citroën":        { "C1":0.48,"C3":0.58,"C4":0.65,"C5":0.75,"C3 Aircross":0.68,"C5 Aircross":0.80,"Berlingo":0.75 },
-  "Dacia":          { "Sandero":0.58,"Duster":0.75,"Logan":0.60,"Jogger":0.70 },
-  "Fiat":           { "500":0.52,"Punto":0.60,"Tipo":0.65,"500X":0.70,"Panda":0.50 },
-  "Ford":           { "Fiesta":0.55,"Focus":0.65,"Mondeo":0.80,"Mustang":1.25,"Kuga":0.80,"Explorer":1.20,"Puma":0.60,"EcoSport":0.70 },
-  "Honda":          { "Jazz":0.55,"Civic":0.65,"Accord":0.75,"CR-V":0.80,"HR-V":0.70,"e (el)":null },
-  "Hyundai":        { "i10":0.50,"i20":0.58,"i30":0.65,"i40":0.75,"Tucson":0.80,"Santa Fe":0.95,"Kona":0.70,"IONIQ 5 (el)":null,"IONIQ 6 (el)":null },
-  "Jeep":           { "Renegade":0.75,"Compass":0.80,"Cherokee":0.95,"Grand Cherokee":1.15,"Wrangler":1.25 },
-  "Kia":            { "Picanto":0.50,"Rio":0.58,"Ceed":0.65,"Sportage":0.80,"Sorento":1.00,"Niro":0.70,"EV6 (el)":null },
-  "Mazda":          { "Mazda 2":0.50,"Mazda 3":0.65,"Mazda 6":0.75,"CX-3":0.68,"CX-5":0.80,"CX-60":0.85,"MX-5":0.68 },
-  "Mercedes-Benz":  { "A-Klass":0.65,"B-Klass":0.70,"C-Klass":0.75,"E-Klass":0.85,"S-Klass":1.20,"CLA":0.70,"GLA":0.75,"GLB":0.80,"GLC":0.90,"GLE":1.10,"GLS":1.30,"EQA (el)":null,"EQC (el)":null },
-  "Mini":           { "Cooper":0.65,"Clubman":0.70,"Countryman":0.75,"Cooper S":0.75 },
+  "Audi":           { "A1":0.60,"A3":0.65,"A4":0.75,"A4 (diesel)":0.55,"A5":0.80,"A6":0.85,"A6 (diesel)":0.60,"A7":0.90,"A8":1.10,"Q2":0.65,"Q3":0.75,"Q5":0.90,"Q5 (diesel)":0.65,"Q7":1.10,"Q7 (diesel)":0.78,"Q8":1.20,"TT":0.80,"e-tron (el)":null,"Q4 e-tron (el)":null },
+  "BMW":            { "1-serie":0.65,"2-serie":0.70,"3-serie":0.75,"3-serie (diesel)":0.55,"4-serie":0.80,"5-serie":0.85,"5-serie (diesel)":0.60,"7-serie":1.15,"X1":0.75,"X2":0.75,"X3":0.85,"X3 (diesel)":0.65,"X4":0.90,"X5":1.05,"X5 (diesel)":0.78,"X6":1.15,"X7":1.30,"iX (el)":null,"i4 (el)":null,"i5 (el)":null },
+  "BYD":            { "Atto 3 (el)":null,"Han (el)":null,"Seal (el)":null,"Dolphin (el)":null,"Seal U (el)":null },
+  "Citroën":        { "C1":0.48,"C3":0.58,"C4":0.65,"C5":0.75,"C3 Aircross":0.68,"C5 Aircross":0.80,"Berlingo":0.75,"ë-C4 (el)":null },
+  "Dacia":          { "Sandero":0.58,"Duster":0.75,"Logan":0.60,"Jogger":0.70,"Spring (el)":null },
+  "Fiat":           { "500":0.52,"500e (el)":null,"Punto":0.60,"Tipo":0.65,"500X":0.70,"Panda":0.50 },
+  "Ford":           { "Fiesta":0.55,"Focus":0.65,"Focus (diesel)":0.50,"Mondeo":0.80,"Mondeo (diesel)":0.58,"Mustang":1.25,"Mustang Mach-E (el)":null,"Kuga":0.80,"Kuga (diesel)":0.60,"Explorer":1.20,"Puma":0.60,"EcoSport":0.70 },
+  "Honda":          { "Jazz":0.55,"Civic":0.65,"Accord":0.75,"CR-V":0.80,"HR-V":0.70,"e (el)":null,"e:Ny1 (el)":null },
+  "Hyundai":        { "i10":0.50,"i20":0.58,"i30":0.65,"i40":0.75,"Tucson":0.80,"Tucson (diesel)":0.65,"Santa Fe":0.95,"Santa Fe (diesel)":0.75,"Kona":0.70,"IONIQ 5 (el)":null,"IONIQ 6 (el)":null },
+  "Jeep":           { "Renegade":0.75,"Compass":0.80,"Cherokee":0.95,"Grand Cherokee":1.15,"Wrangler":1.25,"Avenger (el)":null },
+  "Kia":            { "Picanto":0.50,"Rio":0.58,"Ceed":0.65,"Sportage":0.80,"Sportage (diesel)":0.65,"Sorento":1.00,"Sorento (diesel)":0.80,"Niro":0.70,"EV6 (el)":null,"EV9 (el)":null },
+  "Mazda":          { "Mazda 2":0.50,"Mazda 3":0.65,"Mazda 6":0.75,"Mazda 6 (diesel)":0.58,"CX-3":0.68,"CX-5":0.80,"CX-5 (diesel)":0.65,"CX-60":0.85,"MX-5":0.68,"MX-30 (el)":null },
+  "Mercedes-Benz":  { "A-Klass":0.65,"B-Klass":0.70,"C-Klass":0.75,"C-Klass (diesel)":0.58,"E-Klass":0.85,"E-Klass (diesel)":0.62,"S-Klass":1.20,"CLA":0.70,"GLA":0.75,"GLB":0.80,"GLC":0.90,"GLC (diesel)":0.68,"GLE":1.10,"GLE (diesel)":0.78,"GLS":1.30,"EQA (el)":null,"EQB (el)":null,"EQC (el)":null,"EQE (el)":null,"EQS (el)":null },
+  "MG":             { "MG 5 (el)":null,"MG ZS EV (el)":null,"MG4 EV (el)":null,"MG Marvel R (el)":null },
+  "Mini":           { "Cooper":0.65,"Clubman":0.70,"Countryman":0.75,"Cooper S":0.75,"Cooper SE (el)":null,"Aceman (el)":null },
   "Mitsubishi":     { "Colt":0.55,"Lancer":0.70,"Outlander":0.90,"Eclipse Cross":0.85,"L200":0.95 },
-  "Nissan":         { "Micra":0.55,"Juke":0.70,"Qashqai":0.75,"X-Trail":0.85,"Leaf (el)":null,"Ariya (el)":null },
-  "Opel":           { "Corsa":0.55,"Astra":0.65,"Insignia":0.80,"Mokka":0.70,"Grandland X":0.85,"Crossland":0.70 },
-  "Peugeot":        { "108":0.48,"208":0.55,"308":0.65,"508":0.80,"2008":0.65,"3008":0.75,"5008":0.85 },
-  "Renault":        { "Twingo":0.50,"Clio":0.55,"Megane":0.65,"Talisman":0.80,"Kadjar":0.75,"Captur":0.65,"Koleos":0.90,"Zoe (el)":null },
+  "Nissan":         { "Micra":0.55,"Juke":0.70,"Qashqai":0.75,"Qashqai (diesel)":0.60,"X-Trail":0.85,"X-Trail (diesel)":0.68,"Leaf (el)":null,"Ariya (el)":null },
+  "Opel":           { "Corsa":0.55,"Astra":0.65,"Astra (diesel)":0.52,"Insignia":0.80,"Insignia (diesel)":0.60,"Mokka":0.70,"Grandland X":0.85,"Crossland":0.70,"Corsa-e (el)":null,"Mokka-e (el)":null },
+  "Peugeot":        { "108":0.48,"208":0.55,"308":0.65,"308 (diesel)":0.52,"508":0.80,"508 (diesel)":0.60,"2008":0.65,"3008":0.75,"3008 (diesel)":0.62,"5008":0.85,"e-208 (el)":null,"e-2008 (el)":null },
+  "Polestar":       { "Polestar 2 (el)":null,"Polestar 3 (el)":null,"Polestar 4 (el)":null },
+  "Renault":        { "Twingo":0.50,"Clio":0.55,"Megane":0.65,"Megane (diesel)":0.52,"Talisman":0.80,"Talisman (diesel)":0.62,"Kadjar":0.75,"Kadjar (diesel)":0.62,"Captur":0.65,"Koleos":0.90,"Zoe (el)":null,"Megane E-Tech (el)":null },
   "Saab":           { "9-3":0.80,"9-5":0.95 },
   "SEAT":           { "Ibiza":0.55,"Leon":0.65,"Ateca":0.75,"Arona":0.65,"Tarraco":0.90 },
-  "Skoda":          { "Fabia":0.55,"Octavia":0.70,"Superb":0.80,"Scala":0.65,"Kamiq":0.70,"Karoq":0.80,"Kodiaq":0.90,"Enyaq (el)":null },
-  "Subaru":         { "Impreza":0.75,"Legacy":0.85,"Outback":0.95,"Forester":0.90,"XV":0.80,"BRZ":0.85,"WRX":1.00 },
+  "Skoda":          { "Fabia":0.55,"Octavia":0.70,"Octavia (diesel)":0.52,"Superb":0.80,"Superb (diesel)":0.58,"Scala":0.65,"Kamiq":0.70,"Karoq":0.80,"Kodiaq":0.90,"Kodiaq (diesel)":0.68,"Enyaq (el)":null },
+  "Subaru":         { "Impreza":0.75,"Legacy":0.85,"Outback":0.95,"Forester":0.90,"XV":0.80,"BRZ":0.85,"WRX":1.00,"Solterra (el)":null },
   "Suzuki":         { "Alto":0.45,"Swift":0.55,"Baleno":0.60,"Vitara":0.70,"SX4 S-Cross":0.75,"Jimny":0.80,"Ignis":0.58 },
-  "Toyota":         { "Aygo":0.45,"Yaris":0.50,"Corolla":0.60,"Camry":0.75,"Avensis":0.75,"RAV4":0.75,"Land Cruiser":1.20,"C-HR":0.65,"Prius":0.45,"bZ4X (el)":null },
-  "Volkswagen":     { "Polo":0.55,"Golf":0.65,"Jetta":0.70,"Passat":0.75,"Arteon":0.85,"Touareg":1.05,"Tiguan":0.80,"T-Roc":0.75,"T-Cross":0.65,"ID.4 (el)":null,"ID.3 (el)":null },
-  "Volvo":          { "V40":0.65,"V60":0.75,"V70":0.80,"V90":0.80,"S60":0.70,"S80":0.90,"S90":0.85,"XC40":0.75,"XC60":0.85,"XC70":0.95,"XC90":1.05,"C30":0.60,"C70":0.80,"XC40 Recharge (el)":null,"XC90 Recharge":0.30 }
+  "Tesla":          { "Model 3 (el)":null,"Model Y (el)":null,"Model S (el)":null,"Model X (el)":null,"Cybertruck (el)":null },
+  "Toyota":         { "Aygo":0.45,"Yaris":0.50,"Corolla":0.60,"Camry":0.75,"Avensis":0.75,"RAV4":0.75,"RAV4 (diesel)":0.65,"Land Cruiser":1.20,"Land Cruiser (diesel)":0.95,"C-HR":0.65,"Prius":0.45,"bZ4X (el)":null },
+  "Volkswagen":     { "Polo":0.55,"Golf":0.65,"Golf (diesel)":0.52,"Jetta":0.70,"Passat":0.75,"Passat (diesel)":0.58,"Arteon":0.85,"Touareg":1.05,"Touareg (diesel)":0.78,"Tiguan":0.80,"Tiguan (diesel)":0.62,"T-Roc":0.75,"T-Cross":0.65,"ID.4 (el)":null,"ID.3 (el)":null,"ID.7 (el)":null },
+  "Volvo":          { "V40":0.65,"V60":0.75,"V60 (diesel)":0.55,"V70":0.80,"V90":0.80,"V90 (diesel)":0.58,"S60":0.70,"S80":0.90,"S90":0.85,"XC40":0.75,"XC60":0.85,"XC60 (diesel)":0.62,"XC70":0.95,"XC90":1.05,"XC90 (diesel)":0.75,"C30":0.60,"C70":0.80,"XC40 Recharge (el)":null,"EX30 (el)":null,"EX90 (el)":null }
 };
 
 (function initBrands() {
@@ -617,7 +760,7 @@ function onBrandChange() {
   const modelSel = document.getElementById('modelSel');
   modelSel.innerHTML = '<option value="">Välj modell...</option>';
   document.getElementById('consumption').value = '';
-  document.getElementById('consumption').placeholder = 't.ex. 0.85';
+  setFuelMode('petrol');
 
   if (!brand) { modelSel.disabled = true; return; }
   Object.keys(CAR_DB[brand]).sort().forEach(m => {
@@ -636,10 +779,16 @@ function onModelChange() {
   const field = document.getElementById('consumption');
   if (val === null) {
     field.value = '';
-    field.placeholder = 'Elbil – ange kWh/10km om du vill';
+    field.placeholder = 't.ex. 1.75';
+    setFuelMode('electric');
+  } else if (model.includes('(diesel)')) {
+    field.value = val;
+    field.placeholder = 't.ex. 0.55';
+    setFuelMode('diesel');
   } else {
     field.value = val;
     field.placeholder = 't.ex. 0.85';
+    setFuelMode('petrol');
   }
 }
 
@@ -777,11 +926,19 @@ async function calculate() {
 
   // Validate consumption and price first
   if (isNaN(consumption) || consumption <= 0) {
-    showError('Ange en giltig förbrukning i l/10km (t.ex. 0.85).');
+    if (isElectric) {
+      showError('Ange en giltig förbrukning i kWh/mil (t.ex. 1.75). En elbil drar i genomsnitt 1,5–2,0 kWh/mil.');
+    } else {
+      showError('Ange en giltig förbrukning i l/10km (t.ex. 0.85).');
+    }
     return;
   }
   if (isNaN(price) || price <= 0) {
-    showError('Ange ett giltigt bränslepris i SEK (t.ex. 19.50).');
+    if (isElectric) {
+      showError('Ange ett giltigt laddningspris i SEK/kWh (t.ex. 2.50).');
+    } else {
+      showError('Ange ett giltigt bränslepris i SEK (t.ex. 19.50).');
+    }
     return;
   }
 
@@ -811,17 +968,22 @@ async function calculate() {
     return;
   }
   const km = mil * 10;
-  const liters = mil * consumption;
-  const cost   = liters * price;
+  const amount = mil * consumption; // liters or kWh
+  const cost   = amount * price;
 
   document.getElementById('resKm').textContent     = fmt(km, 1);
   document.getElementById('resMil').textContent    = fmt(mil, 2);
-  document.getElementById('resLiters').textContent = fmt(liters, 2);
+  document.getElementById('resLiters').textContent = fmt(amount, 2);
   document.getElementById('resCost').textContent   = fmt(cost, 2);
 
   setTrace('t1', `${fmt(mil,2)} mil =`, `${fmt(km,1)} km`);
-  setTrace('t2', `${fmt(mil,2)} mil × ${fmt(consumption,2)} l/10km =`, `${fmt(liters,2)} liter`);
-  setTrace('t3', `${fmt(liters,2)} l × ${fmt(price,2)} SEK/l =`, `${fmt(cost,2)} SEK`);
+  if (isElectric) {
+    setTrace('t2', `${fmt(mil,2)} mil × ${fmt(consumption,2)} kWh/mil =`, `${fmt(amount,2)} kWh`);
+    setTrace('t3', `${fmt(amount,2)} kWh × ${fmt(price,2)} SEK/kWh =`, `${fmt(cost,2)} SEK`);
+  } else {
+    setTrace('t2', `${fmt(mil,2)} mil × ${fmt(consumption,2)} l/10km =`, `${fmt(amount,2)} liter`);
+    setTrace('t3', `${fmt(amount,2)} l × ${fmt(price,2)} SEK/l =`, `${fmt(cost,2)} SEK`);
+  }
   setTrace('t4', `Kostnad per mil:`, `${fmt(cost/mil,2)} SEK/mil`);
 
   document.getElementById('results').classList.add('show');
