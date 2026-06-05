@@ -1,0 +1,40 @@
+<!-- ═══════════════════════════════════════════════════════
+     BRÄNSLEKOSTNAD – Sidtitel-effekt
+     WPCode → HTML Snippet (ID: 961)
+     Lägg till [wpcode id="961"] på sidan
+     ═══════════════════════════════════════════════════════ -->
+
+<style>
+  .bc-page-title {
+    background: linear-gradient(135deg, #1a3a5c 0%, #4f46e5 60%, #2d1b69 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: bc-title-shift 5s ease infinite;
+    display: inline-block;
+  }
+  @keyframes bc-title-shift {
+    0%   { background-position: 0% center; }
+    50%  { background-position: 100% center; }
+    100% { background-position: 0% center; }
+  }
+</style>
+
+<script>
+  (function() {
+    function applyEffects() {
+      document.querySelectorAll('h1').forEach(function(el) {
+        var txt = el.textContent.trim();
+        if (txt.toLowerCase().includes('bränslekostnad') && !el.querySelector('.bc-page-title')) {
+          el.innerHTML = '<span class="bc-page-title">' + el.textContent + '</span>';
+        }
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyEffects);
+    } else {
+      applyEffects();
+    }
+  })();
+</script>

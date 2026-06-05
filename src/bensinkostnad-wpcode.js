@@ -447,6 +447,15 @@ function bcDoCalculate(cons, pris) {
 function bcWireEvents() {
   bcInitBrands();
 
+  // Style the page h1 title
+  try {
+    document.querySelectorAll('h1').forEach(function(el) {
+      if (el.textContent.trim().toLowerCase().indexOf('bränslekostnad') !== -1 && !el.querySelector('.bc-page-title')) {
+        el.innerHTML = '<span class="bc-page-title">' + el.textContent + '</span>';
+      }
+    });
+  } catch(e) {}
+
   var gpsBtn  = document.getElementById('bc-gpsBtn');
   var calcBtn = document.getElementById('bc-calcBtn');
   var brand   = document.getElementById('bc-brand');

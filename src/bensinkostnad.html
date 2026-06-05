@@ -24,16 +24,54 @@
     .header {
       text-align: center;
       margin-bottom: 32px;
+      background: linear-gradient(135deg, #1a3a5c 0%, #2d1b69 100%);
+      border-radius: 20px;
+      padding: 36px 24px 28px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(29,70,120,0.25);
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50px; right: -50px;
+      width: 180px; height: 180px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: -40px;
+      width: 140px; height: 140px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .header-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px; height: 56px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 16px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(4px);
     }
     .header h1 {
-      font-size: 1.7rem;
+      font-size: 2rem;
       font-weight: 800;
-      color: #1e2a3a;
-      margin-bottom: 6px;
+      color: #ffffff;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      position: relative;
     }
     .header p {
-      color: #5a6a7e;
+      color: rgba(255,255,255,0.72);
       font-size: 0.92rem;
+      position: relative;
     }
 
     /* ── Cards ── */
@@ -436,39 +474,45 @@
       justify-content: center;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: 10px;
+      margin-top: 14px;
+      position: relative;
     }
     .header-fuel-pill {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 3px 10px;
+      gap: 5px;
+      padding: 5px 12px;
       border-radius: 20px;
       font-size: 0.72rem;
       font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid rgba(255,255,255,0.15);
     }
-    .header-fuel-pill.petrol  { background: #eff6ff; color: #1d4ed8; }
-    .header-fuel-pill.diesel  { background: #f3f4f6; color: #374151; }
-    .header-fuel-pill.electric { background: #f0fdf4; color: #15803d; }
+    .header-fuel-pill.petrol   { background: rgba(59,130,246,0.25);  color: #93c5fd; }
+    .header-fuel-pill.diesel   { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.82); }
+    .header-fuel-pill.electric { background: rgba(16,185,129,0.25);  color: #6ee7b7; }
   </style>
 </head>
 <body>
 <div class="container">
 
   <div class="header">
-    <h1>Bränsle&shy;kostnad</h1>
+    <div class="header-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 10h12"/><path d="M15 6h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><line x1="3" y1="22" x2="21" y2="22"/></svg>
+    </div>
+    <h1>Bränslekostnad&shy;beräkning</h1>
     <p>Ange dina uppgifter nedan och räkna ut vad resan kostar i bränsle.</p>
     <div class="header-fuel-row">
       <span class="header-fuel-pill petrol">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 10h12"/><path d="M15 6h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><line x1="3" y1="22" x2="21" y2="22"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 10h12"/><path d="M15 6h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><line x1="3" y1="22" x2="21" y2="22"/></svg>
         Bensin
       </span>
       <span class="header-fuel-pill diesel">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
         Diesel
       </span>
       <span class="header-fuel-pill electric">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         El
       </span>
     </div>
