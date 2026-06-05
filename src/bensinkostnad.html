@@ -712,38 +712,38 @@ function setFuelMode(mode) { // 'petrol' | 'diesel' | 'electric'
   }
 }
 
-// Förbrukning i l/10km (= l/mil). null = elbil.
+// Förbrukning i l/10km för bensin/diesel, kWh/mil för elbilar (el).
 const CAR_DB = {
-  "Audi":           { "A1":0.60,"A3":0.65,"A4":0.75,"A4 (diesel)":0.55,"A5":0.80,"A6":0.85,"A6 (diesel)":0.60,"A7":0.90,"A8":1.10,"Q2":0.65,"Q3":0.75,"Q5":0.90,"Q5 (diesel)":0.65,"Q7":1.10,"Q7 (diesel)":0.78,"Q8":1.20,"TT":0.80,"e-tron (el)":null,"Q4 e-tron (el)":null },
-  "BMW":            { "1-serie":0.65,"2-serie":0.70,"3-serie":0.75,"3-serie (diesel)":0.55,"4-serie":0.80,"5-serie":0.85,"5-serie (diesel)":0.60,"7-serie":1.15,"X1":0.75,"X2":0.75,"X3":0.85,"X3 (diesel)":0.65,"X4":0.90,"X5":1.05,"X5 (diesel)":0.78,"X6":1.15,"X7":1.30,"iX (el)":null,"i4 (el)":null,"i5 (el)":null },
-  "BYD":            { "Atto 3 (el)":null,"Han (el)":null,"Seal (el)":null,"Dolphin (el)":null,"Seal U (el)":null },
-  "Citroën":        { "C1":0.48,"C3":0.58,"C4":0.65,"C5":0.75,"C3 Aircross":0.68,"C5 Aircross":0.80,"Berlingo":0.75,"ë-C4 (el)":null },
-  "Dacia":          { "Sandero":0.58,"Duster":0.75,"Logan":0.60,"Jogger":0.70,"Spring (el)":null },
-  "Fiat":           { "500":0.52,"500e (el)":null,"Punto":0.60,"Tipo":0.65,"500X":0.70,"Panda":0.50 },
-  "Ford":           { "Fiesta":0.55,"Focus":0.65,"Focus (diesel)":0.50,"Mondeo":0.80,"Mondeo (diesel)":0.58,"Mustang":1.25,"Mustang Mach-E (el)":null,"Kuga":0.80,"Kuga (diesel)":0.60,"Explorer":1.20,"Puma":0.60,"EcoSport":0.70 },
-  "Honda":          { "Jazz":0.55,"Civic":0.65,"Accord":0.75,"CR-V":0.80,"HR-V":0.70,"e (el)":null,"e:Ny1 (el)":null },
-  "Hyundai":        { "i10":0.50,"i20":0.58,"i30":0.65,"i40":0.75,"Tucson":0.80,"Tucson (diesel)":0.65,"Santa Fe":0.95,"Santa Fe (diesel)":0.75,"Kona":0.70,"IONIQ 5 (el)":null,"IONIQ 6 (el)":null },
-  "Jeep":           { "Renegade":0.75,"Compass":0.80,"Cherokee":0.95,"Grand Cherokee":1.15,"Wrangler":1.25,"Avenger (el)":null },
-  "Kia":            { "Picanto":0.50,"Rio":0.58,"Ceed":0.65,"Sportage":0.80,"Sportage (diesel)":0.65,"Sorento":1.00,"Sorento (diesel)":0.80,"Niro":0.70,"EV6 (el)":null,"EV9 (el)":null },
-  "Mazda":          { "Mazda 2":0.50,"Mazda 3":0.65,"Mazda 6":0.75,"Mazda 6 (diesel)":0.58,"CX-3":0.68,"CX-5":0.80,"CX-5 (diesel)":0.65,"CX-60":0.85,"MX-5":0.68,"MX-30 (el)":null },
-  "Mercedes-Benz":  { "A-Klass":0.65,"B-Klass":0.70,"C-Klass":0.75,"C-Klass (diesel)":0.58,"E-Klass":0.85,"E-Klass (diesel)":0.62,"S-Klass":1.20,"CLA":0.70,"GLA":0.75,"GLB":0.80,"GLC":0.90,"GLC (diesel)":0.68,"GLE":1.10,"GLE (diesel)":0.78,"GLS":1.30,"EQA (el)":null,"EQB (el)":null,"EQC (el)":null,"EQE (el)":null,"EQS (el)":null },
-  "MG":             { "MG 5 (el)":null,"MG ZS EV (el)":null,"MG4 EV (el)":null,"MG Marvel R (el)":null },
-  "Mini":           { "Cooper":0.65,"Clubman":0.70,"Countryman":0.75,"Cooper S":0.75,"Cooper SE (el)":null,"Aceman (el)":null },
+  "Audi":           { "A1":0.60,"A3":0.65,"A4":0.75,"A4 (diesel)":0.55,"A5":0.80,"A6":0.85,"A6 (diesel)":0.60,"A7":0.90,"A8":1.10,"Q2":0.65,"Q3":0.75,"Q5":0.90,"Q5 (diesel)":0.65,"Q7":1.10,"Q7 (diesel)":0.78,"Q8":1.20,"TT":0.80,"e-tron (el)":2.20,"Q4 e-tron (el)":1.80 },
+  "BMW":            { "1-serie":0.65,"2-serie":0.70,"3-serie":0.75,"3-serie (diesel)":0.55,"4-serie":0.80,"5-serie":0.85,"5-serie (diesel)":0.60,"7-serie":1.15,"X1":0.75,"X2":0.75,"X3":0.85,"X3 (diesel)":0.65,"X4":0.90,"X5":1.05,"X5 (diesel)":0.78,"X6":1.15,"X7":1.30,"iX (el)":2.00,"i4 (el)":1.65,"i5 (el)":1.85 },
+  "BYD":            { "Atto 3 (el)":1.80,"Han (el)":1.75,"Seal (el)":1.65,"Dolphin (el)":1.50,"Seal U (el)":1.85 },
+  "Citroën":        { "C1":0.48,"C3":0.58,"C4":0.65,"C5":0.75,"C3 Aircross":0.68,"C5 Aircross":0.80,"Berlingo":0.75,"ë-C4 (el)":1.60 },
+  "Dacia":          { "Sandero":0.58,"Duster":0.75,"Logan":0.60,"Jogger":0.70,"Spring (el)":1.35 },
+  "Fiat":           { "500":0.52,"500e (el)":1.40,"Punto":0.60,"Tipo":0.65,"500X":0.70,"Panda":0.50 },
+  "Ford":           { "Fiesta":0.55,"Focus":0.65,"Focus (diesel)":0.50,"Mondeo":0.80,"Mondeo (diesel)":0.58,"Mustang":1.25,"Mustang Mach-E (el)":1.90,"Kuga":0.80,"Kuga (diesel)":0.60,"Explorer":1.20,"Puma":0.60,"EcoSport":0.70 },
+  "Honda":          { "Jazz":0.55,"Civic":0.65,"Accord":0.75,"CR-V":0.80,"HR-V":0.70,"e (el)":1.80,"e:Ny1 (el)":1.70 },
+  "Hyundai":        { "i10":0.50,"i20":0.58,"i30":0.65,"i40":0.75,"Tucson":0.80,"Tucson (diesel)":0.65,"Santa Fe":0.95,"Santa Fe (diesel)":0.75,"Kona":0.70,"IONIQ 5 (el)":1.80,"IONIQ 6 (el)":1.60 },
+  "Jeep":           { "Renegade":0.75,"Compass":0.80,"Cherokee":0.95,"Grand Cherokee":1.15,"Wrangler":1.25,"Avenger (el)":1.60 },
+  "Kia":            { "Picanto":0.50,"Rio":0.58,"Ceed":0.65,"Sportage":0.80,"Sportage (diesel)":0.65,"Sorento":1.00,"Sorento (diesel)":0.80,"Niro":0.70,"EV6 (el)":1.65,"EV9 (el)":2.10 },
+  "Mazda":          { "Mazda 2":0.50,"Mazda 3":0.65,"Mazda 6":0.75,"Mazda 6 (diesel)":0.58,"CX-3":0.68,"CX-5":0.80,"CX-5 (diesel)":0.65,"CX-60":0.85,"MX-5":0.68,"MX-30 (el)":1.70 },
+  "Mercedes-Benz":  { "A-Klass":0.65,"B-Klass":0.70,"C-Klass":0.75,"C-Klass (diesel)":0.58,"E-Klass":0.85,"E-Klass (diesel)":0.62,"S-Klass":1.20,"CLA":0.70,"GLA":0.75,"GLB":0.80,"GLC":0.90,"GLC (diesel)":0.68,"GLE":1.10,"GLE (diesel)":0.78,"GLS":1.30,"EQA (el)":1.80,"EQB (el)":1.85,"EQC (el)":2.10,"EQE (el)":1.75,"EQS (el)":1.80 },
+  "MG":             { "MG 5 (el)":1.65,"MG ZS EV (el)":1.70,"MG4 EV (el)":1.55,"MG Marvel R (el)":1.85 },
+  "Mini":           { "Cooper":0.65,"Clubman":0.70,"Countryman":0.75,"Cooper S":0.75,"Cooper SE (el)":1.60,"Aceman (el)":1.60 },
   "Mitsubishi":     { "Colt":0.55,"Lancer":0.70,"Outlander":0.90,"Eclipse Cross":0.85,"L200":0.95 },
-  "Nissan":         { "Micra":0.55,"Juke":0.70,"Qashqai":0.75,"Qashqai (diesel)":0.60,"X-Trail":0.85,"X-Trail (diesel)":0.68,"Leaf (el)":null,"Ariya (el)":null },
-  "Opel":           { "Corsa":0.55,"Astra":0.65,"Astra (diesel)":0.52,"Insignia":0.80,"Insignia (diesel)":0.60,"Mokka":0.70,"Grandland X":0.85,"Crossland":0.70,"Corsa-e (el)":null,"Mokka-e (el)":null },
-  "Peugeot":        { "108":0.48,"208":0.55,"308":0.65,"308 (diesel)":0.52,"508":0.80,"508 (diesel)":0.60,"2008":0.65,"3008":0.75,"3008 (diesel)":0.62,"5008":0.85,"e-208 (el)":null,"e-2008 (el)":null },
-  "Polestar":       { "Polestar 2 (el)":null,"Polestar 3 (el)":null,"Polestar 4 (el)":null },
-  "Renault":        { "Twingo":0.50,"Clio":0.55,"Megane":0.65,"Megane (diesel)":0.52,"Talisman":0.80,"Talisman (diesel)":0.62,"Kadjar":0.75,"Kadjar (diesel)":0.62,"Captur":0.65,"Koleos":0.90,"Zoe (el)":null,"Megane E-Tech (el)":null },
+  "Nissan":         { "Micra":0.55,"Juke":0.70,"Qashqai":0.75,"Qashqai (diesel)":0.60,"X-Trail":0.85,"X-Trail (diesel)":0.68,"Leaf (el)":1.55,"Ariya (el)":1.90 },
+  "Opel":           { "Corsa":0.55,"Astra":0.65,"Astra (diesel)":0.52,"Insignia":0.80,"Insignia (diesel)":0.60,"Mokka":0.70,"Grandland X":0.85,"Crossland":0.70,"Corsa-e (el)":1.55,"Mokka-e (el)":1.65 },
+  "Peugeot":        { "108":0.48,"208":0.55,"308":0.65,"308 (diesel)":0.52,"508":0.80,"508 (diesel)":0.60,"2008":0.65,"3008":0.75,"3008 (diesel)":0.62,"5008":0.85,"e-208 (el)":1.45,"e-2008 (el)":1.60 },
+  "Polestar":       { "Polestar 2 (el)":1.70,"Polestar 3 (el)":2.00,"Polestar 4 (el)":1.75 },
+  "Renault":        { "Twingo":0.50,"Clio":0.55,"Megane":0.65,"Megane (diesel)":0.52,"Talisman":0.80,"Talisman (diesel)":0.62,"Kadjar":0.75,"Kadjar (diesel)":0.62,"Captur":0.65,"Koleos":0.90,"Zoe (el)":1.55,"Megane E-Tech (el)":1.60 },
   "Saab":           { "9-3":0.80,"9-5":0.95 },
   "SEAT":           { "Ibiza":0.55,"Leon":0.65,"Ateca":0.75,"Arona":0.65,"Tarraco":0.90 },
-  "Skoda":          { "Fabia":0.55,"Octavia":0.70,"Octavia (diesel)":0.52,"Superb":0.80,"Superb (diesel)":0.58,"Scala":0.65,"Kamiq":0.70,"Karoq":0.80,"Kodiaq":0.90,"Kodiaq (diesel)":0.68,"Enyaq (el)":null },
-  "Subaru":         { "Impreza":0.75,"Legacy":0.85,"Outback":0.95,"Forester":0.90,"XV":0.80,"BRZ":0.85,"WRX":1.00,"Solterra (el)":null },
+  "Skoda":          { "Fabia":0.55,"Octavia":0.70,"Octavia (diesel)":0.52,"Superb":0.80,"Superb (diesel)":0.58,"Scala":0.65,"Kamiq":0.70,"Karoq":0.80,"Kodiaq":0.90,"Kodiaq (diesel)":0.68,"Enyaq (el)":1.80 },
+  "Subaru":         { "Impreza":0.75,"Legacy":0.85,"Outback":0.95,"Forester":0.90,"XV":0.80,"BRZ":0.85,"WRX":1.00,"Solterra (el)":1.90 },
   "Suzuki":         { "Alto":0.45,"Swift":0.55,"Baleno":0.60,"Vitara":0.70,"SX4 S-Cross":0.75,"Jimny":0.80,"Ignis":0.58 },
-  "Tesla":          { "Model 3 (el)":null,"Model Y (el)":null,"Model S (el)":null,"Model X (el)":null,"Cybertruck (el)":null },
-  "Toyota":         { "Aygo":0.45,"Yaris":0.50,"Corolla":0.60,"Camry":0.75,"Avensis":0.75,"RAV4":0.75,"RAV4 (diesel)":0.65,"Land Cruiser":1.20,"Land Cruiser (diesel)":0.95,"C-HR":0.65,"Prius":0.45,"bZ4X (el)":null },
-  "Volkswagen":     { "Polo":0.55,"Golf":0.65,"Golf (diesel)":0.52,"Jetta":0.70,"Passat":0.75,"Passat (diesel)":0.58,"Arteon":0.85,"Touareg":1.05,"Touareg (diesel)":0.78,"Tiguan":0.80,"Tiguan (diesel)":0.62,"T-Roc":0.75,"T-Cross":0.65,"ID.4 (el)":null,"ID.3 (el)":null,"ID.7 (el)":null },
-  "Volvo":          { "V40":0.65,"V60":0.75,"V60 (diesel)":0.55,"V70":0.80,"V90":0.80,"V90 (diesel)":0.58,"S60":0.70,"S80":0.90,"S90":0.85,"XC40":0.75,"XC60":0.85,"XC60 (diesel)":0.62,"XC70":0.95,"XC90":1.05,"XC90 (diesel)":0.75,"C30":0.60,"C70":0.80,"XC40 Recharge (el)":null,"EX30 (el)":null,"EX90 (el)":null }
+  "Tesla":          { "Model 3 (el)":1.55,"Model Y (el)":1.70,"Model S (el)":1.75,"Model X (el)":2.05,"Cybertruck (el)":3.00 },
+  "Toyota":         { "Aygo":0.45,"Yaris":0.50,"Corolla":0.60,"Camry":0.75,"Avensis":0.75,"RAV4":0.75,"RAV4 (diesel)":0.65,"Land Cruiser":1.20,"Land Cruiser (diesel)":0.95,"C-HR":0.65,"Prius":0.45,"bZ4X (el)":1.85 },
+  "Volkswagen":     { "Polo":0.55,"Golf":0.65,"Golf (diesel)":0.52,"Jetta":0.70,"Passat":0.75,"Passat (diesel)":0.58,"Arteon":0.85,"Touareg":1.05,"Touareg (diesel)":0.78,"Tiguan":0.80,"Tiguan (diesel)":0.62,"T-Roc":0.75,"T-Cross":0.65,"ID.4 (el)":1.85,"ID.3 (el)":1.65,"ID.7 (el)":1.70 },
+  "Volvo":          { "V40":0.65,"V60":0.75,"V60 (diesel)":0.55,"V70":0.80,"V90":0.80,"V90 (diesel)":0.58,"S60":0.70,"S80":0.90,"S90":0.85,"XC40":0.75,"XC60":0.85,"XC60 (diesel)":0.62,"XC70":0.95,"XC90":1.05,"XC90 (diesel)":0.75,"C30":0.60,"C70":0.80,"XC40 Recharge (el)":1.85,"EX30 (el)":1.55,"EX90 (el)":2.05 }
 };
 
 (function initBrands() {
@@ -775,18 +775,16 @@ function onModelChange() {
   const brand = document.getElementById('brandSel').value;
   const model = document.getElementById('modelSel').value;
   if (!brand || !model) return;
-  const val = CAR_DB[brand][model];
+  const val   = CAR_DB[brand][model];
   const field = document.getElementById('consumption');
-  if (val === null) {
-    field.value = '';
+  field.value = val;
+  if (model.includes('(el)')) {
     field.placeholder = 't.ex. 1.75';
     setFuelMode('electric');
   } else if (model.includes('(diesel)')) {
-    field.value = val;
     field.placeholder = 't.ex. 0.55';
     setFuelMode('diesel');
   } else {
-    field.value = val;
     field.placeholder = 't.ex. 0.85';
     setFuelMode('petrol');
   }
