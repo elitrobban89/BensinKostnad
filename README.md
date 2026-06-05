@@ -1,6 +1,6 @@
 # Bränslelkostnadsberäkning
 
-En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diesel- och elbilar. Byggd för WordPress och publicerad på [elitrobban.se/bensinkostnad-berakning](https://elitrobban.se/bensinkostnad-berakning/).
+En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diesel- och elbilar. Byggd för WordPress och publicerad på [elitrobban.se/branslekostnad-berakning](https://elitrobban.se/branslekostnad-berakning/).
 
 ---
 
