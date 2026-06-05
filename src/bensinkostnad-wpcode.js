@@ -160,7 +160,7 @@ function bcFetchGPS() {
       return;
     }
     var btn = document.getElementById('bc-gpsBtn');
-    if (btn) { btn.disabled = true; btn.classList.add('bc-fetching'); }
+    if (btn) { btn.disabled = true; btn.classList.add('fetching'); }
     var lbl = document.getElementById('bc-gpsBtnLabel');
     if (lbl) lbl.textContent = 'Hämtar...';
     bcSetGpsHint('📡 Hämtar position — godkänn platsdelning om du tillfrågas...', 'loading');
@@ -183,14 +183,14 @@ function bcFetchGPS() {
           var startEl = document.getElementById('bc-start');
           if (startEl) startEl.value = fullAddr;
           bcSetGpsHint('', '');
-          if (btn) { btn.disabled = false; btn.classList.remove('bc-fetching'); }
+          if (btn) { btn.disabled = false; btn.classList.remove('fetching'); }
           var lbl3 = document.getElementById('bc-gpsBtnLabel');
           if (lbl3) lbl3.textContent = 'Hämta GPS';
           bcAutoRoute();
         })
         .catch(function() {
           bcSetGpsHint('⚠️ Kunde inte hämta ortnamn. Ange startort manuellt.', 'error');
-          if (btn) { btn.disabled = false; btn.classList.remove('bc-fetching'); }
+          if (btn) { btn.disabled = false; btn.classList.remove('fetching'); }
           var lbl4 = document.getElementById('bc-gpsBtnLabel');
           if (lbl4) lbl4.textContent = 'Försök igen';
         });
@@ -202,7 +202,7 @@ function bcFetchGPS() {
           3: '⏱ Timeout. Tryck igen eller ange startort manuellt.'
         };
         bcSetGpsHint(errText[err.code] || '❌ GPS-fel (kod ' + err.code + ').', 'error');
-        if (btn) { btn.disabled = false; btn.classList.remove('bc-fetching'); }
+        if (btn) { btn.disabled = false; btn.classList.remove('fetching'); }
         var lbl2 = document.getElementById('bc-gpsBtnLabel');
         if (lbl2) lbl2.textContent = 'Försök igen';
       },
@@ -217,7 +217,7 @@ function bcSetGpsHint(msg, type) {
   var el = document.getElementById('bc-gpsHint');
   if (!el) return;
   el.textContent = msg;
-  el.className = 'bc-hint' + (type ? ' bc-' + type : '');
+  el.className = 'bc-hint' + (type ? ' ' + type : '');
 }
 
 // ── Auto-rutt (triggas när start eller destination lämnas) ───
@@ -285,7 +285,7 @@ function bcFetchRoute(sLon, sLat, eLon, eLat) {
 
 function bcShowMapRoute(sLat, sLon, eLat, eLon, routeCoords, startName, endName) {
   var card = document.getElementById('bc-mapCard');
-  if (card) card.classList.add('bc-show');
+  if (card) card.classList.add('show');
 
   if (!bcMap) {
     bcMap = L.map('bc-map');
@@ -314,11 +314,11 @@ function bcShowError(msg) {
   var el = document.getElementById('bc-error');
   if (!el) return;
   el.textContent = msg;
-  el.classList.add('bc-show');
+  el.classList.add('show');
 }
 function bcClearError() {
   var el = document.getElementById('bc-error');
-  if (el) el.classList.remove('bc-show');
+  if (el) el.classList.remove('show');
 }
 function bcSetCalcStatus(msg) {
   var el = document.getElementById('bc-calcStatus');
@@ -354,7 +354,7 @@ function bcCountUp(id, endVal, decimals) {
 function bcCalculate() {
   bcClearError();
   bcSetCalcStatus('');
-  document.getElementById('bc-results').classList.remove('bc-show');
+  document.getElementById('bc-results').classList.remove('show');
 
   var dest = document.getElementById('bc-dest').value.trim();
   var cons = parseFloat(document.getElementById('bc-cons').value);
@@ -439,7 +439,7 @@ function bcDoCalculate(cons, pris) {
   }
   bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
 
-  document.getElementById('bc-results').classList.add('bc-show');
+  document.getElementById('bc-results').classList.add('show');
   document.getElementById('bc-mapCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
