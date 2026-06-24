@@ -472,11 +472,87 @@
 .bc-tline:last-child { margin-bottom: 0; }
 .bc-tline .bc-arrow { color: #3b82f6; font-weight: 700; flex-shrink: 0; }
 .bc-tline .bc-val   { font-weight: 700; color: #1e40af; font-family: 'Courier New', monospace; }
+
+/* Demo-banner (döljs för inloggade via body.logged-in) */
+.bc-demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(251,191,36,0.08);
+  border: 1.5px solid rgba(251,191,36,0.35);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  font-size: 0.84rem;
+  color: #92400e;
+  line-height: 1.4;
+}
+body.logged-in .bc-demo-banner { display: none; }
+.bc-demo-banner a { color: #92400e; font-weight: 700; }
+.bc-demo-banner strong { font-weight: 700; }
+
+/* Login-CTA (döljs för inloggade) */
+.bc-login-cta {
+  margin-top: 14px;
+  background: linear-gradient(135deg, #1a3a5c 0%, #2d1b69 100%);
+  border-radius: 16px;
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.bc-login-cta::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  pointer-events: none;
+}
+body.logged-in .bc-login-cta { display: none; }
+.bc-login-cta-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  position: relative;
+}
+.bc-login-cta-body {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.5;
+  position: relative;
+}
+.bc-login-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: #fff;
+  color: #1e2a3a;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+  align-self: flex-start;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  position: relative;
+}
+.bc-login-cta-btn:hover { transform: translateY(-1px); text-decoration: none; color: #1e2a3a; }
 </style>
 
 
 <!-- ════════════════ FORMULÄR ════════════════ -->
 <div class="bc-wrap">
+
+  <!-- DEMO-BANNER (döljs för inloggade via body.logged-in CSS) -->
+  <div class="bc-demo-banner" id="bc-demoBanner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Demoläge — <strong><span id="bc-demoCount">5</span> av 5</strong> sökningar kvar. <a href="/logga-in/">Logga in</a> för obegränsad tillgång.</span>
+  </div>
 
   <!-- HEADER -->
   <div class="bc-header">
@@ -686,6 +762,15 @@
       <div class="bc-tline" id="bc-t2"></div>
       <div class="bc-tline" id="bc-t3"></div>
       <div class="bc-tline" id="bc-t4"></div>
+    </div>
+
+    <!-- LOGIN-CTA (döljs för inloggade via body.logged-in CSS) -->
+    <div class="bc-login-cta" id="bc-loginCta">
+      <div class="bc-login-cta-title">Vill du ha obegränsad tillgång?</div>
+      <p class="bc-login-cta-body">Du kör i demoläge med <span id="bc-loginCtaCount">5</span> sökningar totalt. Logga in som prenumerant för att använda kalkylatorn utan begränsning.</p>
+      <a class="bc-login-cta-btn" href="/logga-in/"><!-- Byt URL om inloggningssidan har annan adress -->
+        Logga in
+      </a>
     </div>
   </div>
 

@@ -435,11 +435,45 @@ function bcCountUp(id, endVal, decimals) {
   requestAnimationFrame(step);
 }
 
+// ── Demo-counter (localStorage, max 5 för utloggade) ──────────────
+var BC_DEMO_MAX = 5;
+
+function bcIsLoggedIn() {
+  return document.body.classList.contains('logged-in');
+}
+function bcDemoRemaining() {
+  var used = parseInt(localStorage.getItem('bc_demo_count') || '0', 10);
+  return Math.max(0, BC_DEMO_MAX - used);
+}
+function bcUpdateDemoUI() {
+  if (bcIsLoggedIn()) return;
+  var rem = bcDemoRemaining();
+  var countEl = document.getElementById('bc-demoCount');
+  if (countEl) countEl.textContent = rem;
+  var ctaCountEl = document.getElementById('bc-loginCtaCount');
+  if (ctaCountEl) ctaCountEl.textContent = BC_DEMO_MAX;
+  var btn = document.getElementById('bc-calcBtn');
+  if (rem === 0 && btn) btn.disabled = true;
+}
+function bcIncrementDemo() {
+  var used = parseInt(localStorage.getItem('bc_demo_count') || '0', 10);
+  localStorage.setItem('bc_demo_count', Math.min(used + 1, BC_DEMO_MAX));
+  bcUpdateDemoUI();
+}
+
 // ── Beräkning ─────────────────────────────────────────
 function bcCalculate() {
   bcClearError();
   bcSetCalcStatus('');
   document.getElementById('bc-results').classList.remove('show');
+
+  // Blockera om demo-gränsen är nådd
+  if (!bcIsLoggedIn() && bcDemoRemaining() === 0) {
+    bcShowError('Du har använt alla 5 demosökningar. Logga in för obegränsad tillgång.');
+    var loginCta = document.getElementById('bc-loginCta');
+    if (loginCta) loginCta.style.display = 'flex';
+    return;
+  }
 
   var dest = document.getElementById('bc-dest').value.trim();
   var cons = parseFloat(document.getElementById('bc-cons').value);
@@ -533,6 +567,14 @@ function bcDoCalculate(cons, pris) {
 
   document.getElementById('bc-results').classList.add('show');
   document.getElementById('bc-mapCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Räkna upp demo-counter om utloggad
+  if (!bcIsLoggedIn()) {
+    bcIncrementDemo();
+    if (bcDemoRemaining() === 0) {
+      bcShowError('Du har nu använt alla 5 demosökningar. Logga in för obegränsad tillgång.');
+    }
+  }
 }
 
 // ── Event wiring ──────────────────────────────────────
@@ -594,7 +636,8 @@ function bcWireEvents() {
 
 // ── Starta när DOM är redo ────────────────────────────
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bcWireEvents);
+  document.addEventListener('DOMContentLoaded', function() { bcWireEvents(); bcUpdateDemoUI(); });
 } else {
   bcWireEvents();
+  bcUpdateDemoUI();
 }

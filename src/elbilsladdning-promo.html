@@ -22,7 +22,6 @@
   flex-direction: column;
   gap: 16px;
 }
-
 .elpromo-card::before {
   content: '';
   position: absolute;
@@ -48,7 +47,6 @@
   gap: 14px;
   position: relative;
 }
-
 .elpromo-icon {
   display: inline-flex;
   align-items: center;
@@ -59,13 +57,7 @@
   flex-shrink: 0;
   backdrop-filter: blur(4px);
 }
-
-.elpromo-titles {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
+.elpromo-titles { display: flex; flex-direction: column; gap: 4px; }
 .elpromo-eyebrow {
   font-size: 0.7rem;
   font-weight: 700;
@@ -73,7 +65,6 @@
   letter-spacing: 0.12em;
   color: #6ee7b7;
 }
-
 .elpromo-title {
   font-size: 1.25rem;
   font-weight: 800;
@@ -96,7 +87,6 @@
   flex-wrap: wrap;
   position: relative;
 }
-
 .elpromo-pill {
   display: inline-flex;
   align-items: center;
@@ -112,6 +102,33 @@
 .elpromo-pill.bensin  { background: rgba(59,130,246,0.25); color: #93c5fd; }
 .elpromo-pill.diesel  { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.82); }
 
+/* Badges */
+.elpromo-member-badge,
+.elpromo-demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  align-self: flex-start;
+  position: relative;
+}
+.elpromo-member-badge {
+  background: rgba(16,185,129,0.18);
+  border: 1px solid rgba(110,231,183,0.35);
+  color: #6ee7b7;
+}
+.elpromo-demo-badge {
+  background: rgba(251,191,36,0.15);
+  border: 1px solid rgba(251,191,36,0.3);
+  color: #fcd34d;
+}
+
+/* Buttons */
 .elpromo-btn {
   display: inline-flex;
   align-items: center;
@@ -126,7 +143,6 @@
   letter-spacing: 0.01em;
   box-shadow: 0 4px 16px rgba(0,0,0,0.18);
   transition: transform 0.15s, box-shadow 0.15s;
-  align-self: flex-start;
   position: relative;
 }
 .elpromo-btn:hover {
@@ -135,30 +151,42 @@
   text-decoration: none;
   color: #1e2a3a;
 }
-.elpromo-btn:active {
-  transform: translateY(0);
-}
-.elpromo-btn svg {
-  flex-shrink: 0;
-  color: #3b82f6;
-}
+.elpromo-btn:active { transform: translateY(0); }
+.elpromo-btn svg { flex-shrink: 0; color: #3b82f6; }
 
-.elpromo-member-badge {
+.elpromo-btn-outline {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 13px;
-  background: rgba(16,185,129,0.18);
-  border: 1px solid rgba(110,231,183,0.35);
-  border-radius: 20px;
-  font-size: 0.72rem;
+  gap: 8px;
+  padding: 13px 22px;
+  background: transparent;
+  color: #fff;
+  border: 1.5px solid rgba(255,255,255,0.35);
+  border-radius: 12px;
+  font-size: 0.92rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #6ee7b7;
-  align-self: flex-start;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
   position: relative;
 }
+.elpromo-btn-outline:hover {
+  border-color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.08);
+  text-decoration: none;
+  color: #fff;
+}
+
+.elpromo-btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  position: relative;
+}
+
+/* Login state — WordPress lägger body.logged-in automatiskt */
+body:not(.logged-in) .elpromo-loggedin  { display: none; }
+body.logged-in        .elpromo-loggedout { display: none; }
 </style>
 
 <div class="elpromo-wrap">
@@ -176,15 +204,6 @@
       </div>
     </div>
 
-    <div class="elpromo-member-badge">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-      Ingår i din prenumeration
-    </div>
-
-    <p class="elpromo-body">
-      Som prenumerant har du tillgång till vår kalkylator för resekostnader. Ange start och destination så hämtas sträckan automatiskt — för el, bensin och diesel.
-    </p>
-
     <div class="elpromo-pills">
       <span class="elpromo-pill el">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -200,10 +219,35 @@
       </span>
     </div>
 
-    <a class="elpromo-btn" href="https://elitrobban.se/branslekostnad-berakning/">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      Räkna ut resekostnaden
-    </a>
+    <!-- INLOGGAD -->
+    <div class="elpromo-loggedin">
+      <div class="elpromo-member-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Ingår i din prenumeration
+      </div>
+      <p class="elpromo-body">Som prenumerant har du obegränsad tillgång. Ange start och destination — sträckan hämtas automatiskt.</p>
+      <a class="elpromo-btn" href="https://elitrobban.se/branslekostnad-berakning/">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Räkna ut resekostnaden
+      </a>
+    </div>
+
+    <!-- UTLOGGAD -->
+    <div class="elpromo-loggedout">
+      <div class="elpromo-demo-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Demo — 5 gratis sökningar
+      </div>
+      <p class="elpromo-body">Prova kalkylatorn utan konto. Du får 5 sökningar i demoläge — logga in som prenumerant för obegränsad tillgång.</p>
+      <div class="elpromo-btn-row">
+        <a class="elpromo-btn" href="https://elitrobban.se/branslekostnad-berakning/">
+          Testa demo
+        </a>
+        <a class="elpromo-btn-outline" href="/logga-in/"><!-- Byt URL om inloggningssidan har annan adress -->
+          Logga in
+        </a>
+      </div>
+    </div>
 
   </div>
 </div>
