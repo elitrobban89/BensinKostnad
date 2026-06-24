@@ -15,6 +15,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Adaptivt gränssnitt** — bränslepriset byter etikett och enhet (SEK/l → SEK/kWh) vid elval; formeln och resultaten uppdateras
 - **Bränsledtyp-badges** — visuella indikatorer (Bensin / Diesel / El) som markerar valt drivmedel
 - **Count-up animation** — siffrorna räknas upp med mjuk animation när resultaten visas
+- **Returresa** — kryssruta som dubblar sträckan för tur- och returresor (av som standard)
 - **Gradient-design** — kalkylatorrubrik och sidtitel har lila/indigo-gradient-styling för ett modernt utseende
 - **Responsiv design** — fungerar på mobil och desktop
 

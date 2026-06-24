@@ -183,6 +183,48 @@
       margin-top: 5px;
     }
 
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 12px;
+    }
+    .toggle-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #e5e7eb;
+      border-radius: 22px;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      left: 3px; bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+    }
+    .toggle-switch input:checked + .toggle-slider { background: #3b82f6; }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
+
     .gps-row {
       display: flex;
       gap: 8px;
@@ -554,6 +596,14 @@
         <span class="unit">mil</span>
       </div>
       <p class="hint">Ange körsträcka i svenska mil. 1 mil = 10 km. Fylls i automatiskt om destination och GPS är aktiva.</p>
+    </div>
+
+    <div class="toggle-row">
+      <label class="toggle-switch">
+        <input type="checkbox" id="returresa">
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="toggle-label" onclick="document.getElementById('returresa').click()">Returresa (dubbla sträckan)</span>
     </div>
   </div>
 
@@ -1004,11 +1054,13 @@ async function calculate() {
     btn.textContent = 'Räkna ut kostnaden';
   }
 
-  const mil = parseFloat(document.getElementById('distanceMil').value);
-  if (isNaN(mil) || mil <= 0) {
+  const milOneWay = parseFloat(document.getElementById('distanceMil').value);
+  if (isNaN(milOneWay) || milOneWay <= 0) {
     showError('Ange en körsträcka i mil, eller fyll i destination och aktivera GPS för automatisk beräkning.');
     return;
   }
+  const returresa = document.getElementById('returresa').checked;
+  const mil = returresa ? milOneWay * 2 : milOneWay;
   const km = mil * 10;
   const amount = mil * consumption; // liters or kWh
   const cost   = amount * price;
@@ -1018,7 +1070,11 @@ async function calculate() {
   document.getElementById('resLiters').textContent = fmt(amount, 2);
   document.getElementById('resCost').textContent   = fmt(cost, 2);
 
-  setTrace('t1', `${fmt(mil,2)} mil =`, `${fmt(km,1)} km`);
+  if (returresa) {
+    setTrace('t1', `${fmt(milOneWay,2)} mil × 2 (tur & retur) =`, `${fmt(mil,2)} mil (${fmt(km,1)} km)`);
+  } else {
+    setTrace('t1', `${fmt(mil,2)} mil =`, `${fmt(km,1)} km`);
+  }
   if (isElectric) {
     setTrace('t2', `${fmt(mil,2)} mil × ${fmt(consumption,2)} kWh/mil =`, `${fmt(amount,2)} kWh`);
     setTrace('t3', `${fmt(amount,2)} kWh × ${fmt(price,2)} SEK/kWh =`, `${fmt(cost,2)} SEK`);
