@@ -500,11 +500,14 @@ function bcCalculate() {
 }
 
 function bcDoCalculate(cons, pris) {
-  var mil = parseFloat(document.getElementById('bc-km').value);
-  if (isNaN(mil) || mil <= 0) {
+  var milOneWay = parseFloat(document.getElementById('bc-km').value);
+  if (isNaN(milOneWay) || milOneWay <= 0) {
     bcShowError('Ange en körsträcka i mil, eller fyll i destination och aktivera GPS för automatisk beräkning.');
     return;
   }
+  var returresaEl = document.getElementById('bc-returresa');
+  var returresa = returresaEl && returresaEl.checked;
+  var mil = returresa ? milOneWay * 2 : milOneWay;
   var km     = mil * 10;
   var amount = mil * cons; // liter eller kWh
   var kostnad = amount * pris;
@@ -514,7 +517,11 @@ function bcDoCalculate(cons, pris) {
   bcCountUp('bc-rLiters', amount,  2);
   bcCountUp('bc-rCost',   kostnad, 2);
 
-  bcTrace('bc-t1', bcFmt(mil,2) + ' mil = ', bcFmt(km,1) + ' km');
+  if (returresa) {
+    bcTrace('bc-t1', bcFmt(milOneWay,2) + ' mil × 2 (tur & retur) =', bcFmt(mil,2) + ' mil (' + bcFmt(km,1) + ' km)');
+  } else {
+    bcTrace('bc-t1', bcFmt(mil,2) + ' mil =', bcFmt(km,1) + ' km');
+  }
   if (bcIsElectric) {
     bcTrace('bc-t2', bcFmt(mil,2) + ' mil × ' + bcFmt(cons,2) + ' kWh/mil =', bcFmt(amount,2) + ' kWh');
     bcTrace('bc-t3', bcFmt(amount,2) + ' kWh × ' + bcFmt(pris,2) + ' SEK/kWh =', bcFmt(kostnad,2) + ' SEK');
