@@ -10,13 +10,17 @@ var bcIsElectric = false, bcIsDiesel = false;
 // ── Bildata: l/10km för bensin/diesel, kWh/mil för elbilar (el) ──
 // EV-förbrukning kompletteras automatiskt från CarAdvice /api/ev-consumption vid laddning
 var BC_CAR_DB = {
+  "Abarth":         { "500":0.70,"595":0.75,"695":0.78 },
   "Alfa Romeo":     { "Giulia":0.78,"Giulia (diesel)":0.58,"Stelvio":0.90,"Stelvio (diesel)":0.65,"Tonale":0.80,"147":0.75,"156":0.80,"159":0.85 },
+  "Alpine":         { "A110":0.85,"A290 (el)":1.60 },
   "Audi":           { "A1":0.60,"A3":0.65,"A4":0.75,"A4 (diesel)":0.55,"A5":0.80,"A6":0.85,"A6 (diesel)":0.60,"A7":0.90,"A8":1.10,"Q2":0.65,"Q3":0.75,"Q5":0.90,"Q5 (diesel)":0.65,"Q7":1.10,"Q7 (diesel)":0.78,"Q8":1.20,"TT":0.80,"e-tron (el)":2.20,"Q4 e-tron (el)":1.80,"Q8 e-tron (el)":2.10 },
   "BMW":            { "1-serie":0.65,"2-serie":0.70,"3-serie":0.75,"3-serie (diesel)":0.55,"4-serie":0.80,"5-serie":0.85,"5-serie (diesel)":0.60,"7-serie":1.15,"X1":0.75,"X2":0.75,"X3":0.85,"X3 (diesel)":0.65,"X4":0.90,"X5":1.05,"X5 (diesel)":0.78,"X6":1.15,"X7":1.30,"iX (el)":2.00,"i4 (el)":1.65,"i5 (el)":1.85,"iX1 (el)":1.75,"iX3 (el)":1.90,"i7 (el)":2.10 },
   "BYD":            { "Atto 3 (el)":1.80,"Han (el)":1.75,"Seal (el)":1.65,"Dolphin (el)":1.50,"Seal U (el)":1.85,"Tang (el)":2.05 },
   "Citroën":        { "C1":0.48,"C3":0.58,"C4":0.65,"C5":0.75,"C3 Aircross":0.68,"C5 Aircross":0.80,"Berlingo":0.75,"ë-C4 (el)":1.60,"ë-C3 (el)":1.45 },
   "Cupra":          { "Born (el)":1.65,"Formentor":0.80,"Formentor (el)":1.80,"Leon":0.68,"Ateca":0.78,"Tavascan (el)":1.75 },
+  "Cadillac":       { "Escalade":1.50,"CT5":1.00,"Lyriq (el)":2.00 },
   "Dacia":          { "Sandero":0.58,"Duster":0.75,"Logan":0.60,"Jogger":0.70,"Spring (el)":1.35,"Bigster":0.78 },
+  "DS":             { "DS 3":0.68,"DS 4":0.72,"DS 7":0.82,"DS 3 E-Tense (el)":1.65,"DS 4 E-Tense (el)":1.70 },
   "Fiat":           { "500":0.52,"500e (el)":1.40,"Punto":0.60,"Tipo":0.65,"500X":0.70,"Panda":0.50,"600e (el)":1.55 },
   "Ford":           { "Fiesta":0.55,"Focus":0.65,"Focus (diesel)":0.50,"Mondeo":0.80,"Mondeo (diesel)":0.58,"Mustang":1.25,"Mustang Mach-E (el)":1.90,"Kuga":0.80,"Kuga (diesel)":0.60,"Explorer":1.20,"Puma":0.60,"EcoSport":0.70,"Capri (el)":1.80 },
   "Genesis":        { "G70":0.80,"G70 (diesel)":0.60,"G80":0.90,"G80 (diesel)":0.68,"GV70":0.92,"GV70 (diesel)":0.72,"GV80":1.05,"GV80 (diesel)":0.80,"GV60 (el)":1.85,"G80 (el)":1.90 },
@@ -25,8 +29,12 @@ var BC_CAR_DB = {
   "Jaguar":         { "F-Pace":0.95,"F-Pace (diesel)":0.72,"E-Pace":0.85,"F-Type":1.10,"XE":0.78,"XF":0.85,"XF (diesel)":0.62,"I-Pace (el)":2.05 },
   "Jeep":           { "Renegade":0.75,"Compass":0.80,"Cherokee":0.95,"Grand Cherokee":1.15,"Wrangler":1.25,"Avenger (el)":1.60 },
   "Kia":            { "Picanto":0.50,"Rio":0.58,"Ceed":0.65,"Sportage":0.80,"Sportage (diesel)":0.65,"Sorento":1.00,"Sorento (diesel)":0.80,"Niro":0.70,"Niro Electric (el)":1.65,"EV6 (el)":1.65,"EV9 (el)":2.10 },
+  "Lancia":         { "Ypsilon":0.55,"Ypsilon (el)":1.55 },
   "Land Rover":     { "Defender":1.10,"Defender (diesel)":0.82,"Discovery":1.15,"Discovery (diesel)":0.88,"Discovery Sport":0.92,"Discovery Sport (diesel)":0.72,"Range Rover":1.22,"Range Rover (diesel)":0.90,"Range Rover Sport":1.12,"Range Rover Sport (diesel)":0.85,"Range Rover Evoque":0.90,"Range Rover Evoque (diesel)":0.70,"Freelander":0.85 },
   "Lexus":          { "IS 300h":0.65,"ES 300h":0.60,"NX 300h":0.72,"NX 450h":0.70,"UX 250h":0.58,"RX 450h":0.80,"LC 500":1.05,"UX 300e (el)":1.90 },
+  "Lotus":          { "Emira":1.05,"Eletre (el)":2.20,"Emeya (el)":2.00 },
+  "Lucid":          { "Air (el)":1.65 },
+  "Maserati":       { "Ghibli":1.05,"Ghibli (diesel)":0.78,"Levante":1.15,"Levante (diesel)":0.88,"GranTurismo":1.30,"Grecale":1.00,"GranTurismo Folgore (el)":2.10 },
   "Mazda":          { "Mazda 2":0.50,"Mazda 3":0.65,"Mazda 6":0.75,"Mazda 6 (diesel)":0.58,"CX-3":0.68,"CX-5":0.80,"CX-5 (diesel)":0.65,"CX-60":0.85,"CX-60 (diesel)":0.68,"CX-90":0.95,"MX-5":0.68,"MX-30 (el)":1.70 },
   "Mercedes-Benz":  { "A-Klass":0.65,"B-Klass":0.70,"C-Klass":0.75,"C-Klass (diesel)":0.58,"E-Klass":0.85,"E-Klass (diesel)":0.62,"S-Klass":1.20,"CLA":0.70,"GLA":0.75,"GLB":0.80,"GLC":0.90,"GLC (diesel)":0.68,"GLE":1.10,"GLE (diesel)":0.78,"GLS":1.30,"EQA (el)":1.80,"EQB (el)":1.85,"EQC (el)":2.10,"EQE (el)":1.75,"EQS (el)":1.80 },
   "MG":             { "MG 5 (el)":1.65,"MG ZS EV (el)":1.70,"MG4 EV (el)":1.55,"MG Marvel R (el)":1.85,"MG HS":0.82,"Cyberster (el)":1.80 },
@@ -38,17 +46,21 @@ var BC_CAR_DB = {
   "Peugeot":        { "108":0.48,"208":0.55,"308":0.65,"308 (diesel)":0.52,"408":0.72,"508":0.80,"508 (diesel)":0.60,"2008":0.65,"3008":0.75,"3008 (diesel)":0.62,"5008":0.85,"e-208 (el)":1.45,"e-2008 (el)":1.60,"e-308 (el)":1.60,"e-3008 (el)":1.65 },
   "Polestar":       { "Polestar 2 (el)":1.70,"Polestar 3 (el)":2.00,"Polestar 4 (el)":1.75 },
   "Porsche":        { "911":0.95,"Cayenne":1.10,"Cayenne (diesel)":0.82,"Macan":0.90,"Macan (el)":1.90,"Panamera":1.05,"Panamera (diesel)":0.78,"Taycan (el)":1.95,"Cayenne Turbo":1.30 },
+  "Rolls-Royce":    { "Ghost":2.00,"Cullinan":2.20,"Spectre (el)":2.50 },
   "Renault":        { "Twingo":0.50,"Clio":0.55,"Megane":0.65,"Megane (diesel)":0.52,"Talisman":0.80,"Talisman (diesel)":0.62,"Kadjar":0.75,"Kadjar (diesel)":0.62,"Captur":0.65,"Koleos":0.90,"Zoe (el)":1.55,"Megane E-Tech (el)":1.60,"Scenic E-Tech (el)":1.65 },
   "Saab":           { "9-3":0.80,"9-5":0.95 },
   "SEAT":           { "Ibiza":0.55,"Leon":0.65,"Ateca":0.75,"Arona":0.65,"Tarraco":0.90 },
   "Skoda":          { "Fabia":0.55,"Octavia":0.70,"Octavia (diesel)":0.52,"Superb":0.80,"Superb (diesel)":0.58,"Scala":0.65,"Kamiq":0.70,"Karoq":0.80,"Kodiaq":0.90,"Kodiaq (diesel)":0.68,"Enyaq (el)":1.80,"Elroq (el)":1.65 },
+  "Smart":          { "#1 (el)":1.70,"#3 (el)":1.75 },
   "Subaru":         { "Impreza":0.75,"Legacy":0.85,"Outback":0.95,"Forester":0.90,"XV":0.80,"BRZ":0.85,"WRX":1.00,"Solterra (el)":1.90 },
   "Suzuki":         { "Alto":0.45,"Swift":0.55,"Baleno":0.60,"Vitara":0.70,"SX4 S-Cross":0.75,"Jimny":0.80,"Ignis":0.58,"Swace":0.48 },
   "Tesla":          { "Model 3 (el)":1.55,"Model Y (el)":1.70,"Model S (el)":1.75,"Model X (el)":2.05,"Cybertruck (el)":3.00 },
   "Toyota":         { "Aygo":0.45,"Yaris":0.50,"Corolla":0.60,"Camry":0.75,"Avensis":0.75,"RAV4":0.75,"RAV4 (diesel)":0.65,"Land Cruiser":1.20,"Land Cruiser (diesel)":0.95,"C-HR":0.65,"Prius":0.45,"bZ4X (el)":1.85,"Yaris Cross":0.52,"GR Yaris":0.72 },
   "Volkswagen":     { "Polo":0.55,"Golf":0.65,"Golf (diesel)":0.52,"Jetta":0.70,"Passat":0.75,"Passat (diesel)":0.58,"Arteon":0.85,"Touareg":1.05,"Touareg (diesel)":0.78,"Tiguan":0.80,"Tiguan (diesel)":0.62,"T-Roc":0.75,"T-Cross":0.65,"Taigo":0.68,"ID.4 (el)":1.85,"ID.3 (el)":1.65,"ID.7 (el)":1.70,"ID.5 (el)":1.90,"ID.Buzz (el)":2.00 },
   "Volvo":          { "V40":0.65,"V60":0.75,"V60 (diesel)":0.55,"V70":0.80,"V90":0.80,"V90 (diesel)":0.58,"S60":0.70,"S80":0.90,"S90":0.85,"XC40":0.75,"XC60":0.85,"XC60 (diesel)":0.62,"XC70":0.95,"XC90":1.05,"XC90 (diesel)":0.75,"C30":0.60,"C70":0.80,"XC40 Recharge (el)":1.85,"EX30 (el)":1.55,"EX40 (el)":1.80,"EC40 (el)":1.80,"EX90 (el)":2.05 },
-  "Xpeng":          { "G9 (el)":1.95,"P7 (el)":1.70,"G6 (el)":1.75 }
+  "VinFast":        { "VF8 (el)":2.00,"VF9 (el)":2.20,"VF6 (el)":1.75 },
+  "Xpeng":          { "G9 (el)":1.95,"P7 (el)":1.70,"G6 (el)":1.75 },
+  "Zeekr":          { "001 (el)":1.75,"007 (el)":1.60,"X (el)":1.65 }
 };
 
 // ── Bränsleläge ───────────────────────────────────────
@@ -119,26 +131,36 @@ function bcSetFuelMode(mode) {
 
 // ── Ladda EV-förbrukning dynamiskt från CarAdvice ────────────────
 function bcLoadEvConsumption() {
+  // Mappar första ordet i carName → märkesnamn i BC_CAR_DB
   var BRAND_MAP = {
+    'Abarth':'Abarth','Alfa':'Alfa Romeo','Alpine':'Alpine',
     'Audi':'Audi','BMW':'BMW','BYD':'BYD',
-    'Citroën':'Citroën','Citroen':'Citroën',
-    'Cupra':'Cupra','Dacia':'Dacia','Fiat':'Fiat','Ford':'Ford',
+    'Cadillac':'Cadillac',
+    'Citroën':'Citroën','Citroen':'Citroën','CitroÃ«n':'Citroën',
+    'CUPRA':'Cupra','Cupra':'Cupra',
+    'Dacia':'Dacia','DS':'DS','Fiat':'Fiat','Ford':'Ford',
     'Genesis':'Genesis','Honda':'Honda','Hyundai':'Hyundai',
     'Jaguar':'Jaguar','Jeep':'Jeep','Kia':'Kia',
-    'Lexus':'Lexus','Mazda':'Mazda',
+    'Lancia':'Lancia','Lexus':'Lexus','Lotus':'Lotus','Lucid':'Lucid',
+    'Maserati':'Maserati','Mazda':'Mazda',
     'Mercedes-Benz':'Mercedes-Benz','Mercedes':'Mercedes-Benz',
-    'MG':'MG','MINI':'Mini','Mini':'Mini',
-    'Mitsubishi':'Mitsubishi','Nio':'Nio','NIO':'Nio',
+    'MG':'MG','MG4':'MG','MG5':'MG',
+    'MINI':'Mini','Mini':'Mini',
+    'Mitsubishi':'Mitsubishi','NIO':'Nio','Nio':'Nio',
     'Nissan':'Nissan','Opel':'Opel','Peugeot':'Peugeot',
     'Polestar':'Polestar','Porsche':'Porsche','Renault':'Renault',
+    'Rolls-Royce':'Rolls-Royce',
     'SEAT':'SEAT','Seat':'SEAT',
-    'Skoda':'Skoda','Škoda':'Skoda',
-    'Subaru':'Subaru','Suzuki':'Suzuki','Tesla':'Tesla',
-    'Toyota':'Toyota','Volkswagen':'Volkswagen','VW':'Volkswagen',
-    'Volvo':'Volvo','Xpeng':'Xpeng','XPENG':'Xpeng',
-    'Alfa':'Alfa Romeo'
+    'Skoda':'Skoda','Škoda':'Skoda','Å koda':'Skoda',
+    'Smart':'Smart','Subaru':'Subaru','Suzuki':'Suzuki','Tesla':'Tesla',
+    'Toyota':'Toyota','VinFast':'VinFast',
+    'Volkswagen':'Volkswagen','VW':'Volkswagen',
+    'Volvo':'Volvo','XPENG':'Xpeng','Xpeng':'Xpeng',
+    'Zeekr':'Zeekr'
   };
-  var TWO_WORD = { 'Land Rover':'Land Rover','Alfa Romeo':'Alfa Romeo','Range Rover':'Land Rover' };
+  // Märken vars prefix-ord ingår i modellnamnet (t.ex. "MG4 Long Range" → märke MG, modell "MG4 Long Range")
+  var PREFIX_IN_MODEL = { 'MG4':true,'MG5':true };
+  var TWO_WORD = { 'Land Rover':'Land Rover','Alfa Romeo':'Alfa Romeo','Range Rover':'Land Rover','Rolls-Royce':'Rolls-Royce' };
 
   fetch('https://caradvice.onrender.com/api/ev-consumption')
     .then(function(r) { return r.json(); })
@@ -156,7 +178,7 @@ function bcLoadEvConsumption() {
         }
         if (!brand && BRAND_MAP[parts[0]]) {
           brand = BRAND_MAP[parts[0]];
-          modelParts = parts.slice(1);
+          modelParts = PREFIX_IN_MODEL[parts[0]] ? parts : parts.slice(1);
         }
         if (!brand || !modelParts || !modelParts.length) return;
 
