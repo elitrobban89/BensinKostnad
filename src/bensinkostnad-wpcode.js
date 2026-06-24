@@ -130,7 +130,22 @@ function bcSetFuelMode(mode) {
 }
 
 // ── Ladda EV-förbrukning dynamiskt från CarAdvice ────────────────
+var BC_EV_CACHE_KEY = 'bc_ev_cache';
+var BC_EV_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 timmar
+
 function bcLoadEvConsumption() {
+  // Försök läsa från localStorage-cache först
+  try {
+    var cached = localStorage.getItem(BC_EV_CACHE_KEY);
+    if (cached) {
+      var obj = JSON.parse(cached);
+      if (Date.now() - obj.ts < BC_EV_CACHE_TTL) {
+        bcApplyEvData(obj.data);
+        return;
+      }
+    }
+  } catch(e) {}
+
   // Mappar första ordet i carName → märkesnamn i BC_CAR_DB
   var BRAND_MAP = {
     'Abarth':'Abarth','Alfa':'Alfa Romeo','Alpine':'Alpine',
@@ -165,30 +180,64 @@ function bcLoadEvConsumption() {
   fetch('https://caradvice.onrender.com/api/ev-consumption')
     .then(function(r) { return r.json(); })
     .then(function(list) {
-      var added = 0;
-      list.forEach(function(entry) {
-        var name = (entry.carName || '').trim();
-        if (!name || !entry.kwhPerMil) return;
-        var parts = name.split(' ');
-        var brand = null, modelParts = null;
-
-        if (parts.length >= 2) {
-          var two = parts[0] + ' ' + parts[1];
-          if (TWO_WORD[two]) { brand = TWO_WORD[two]; modelParts = parts.slice(2); }
-        }
-        if (!brand && BRAND_MAP[parts[0]]) {
-          brand = BRAND_MAP[parts[0]];
-          modelParts = PREFIX_IN_MODEL[parts[0]] ? parts : parts.slice(1);
-        }
-        if (!brand || !modelParts || !modelParts.length) return;
-
-        var model = modelParts.join(' ').replace(/\s*\(el\)\s*$/i, '').trim() + ' (el)';
-        if (!BC_CAR_DB[brand]) BC_CAR_DB[brand] = {};
-        if (!BC_CAR_DB[brand][model]) { BC_CAR_DB[brand][model] = entry.kwhPerMil; added++; }
-      });
-      if (added > 0) bcInitBrands();
+      try { localStorage.setItem(BC_EV_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: list })); } catch(e) {}
+      bcApplyEvData(list);
     })
     .catch(function() { /* API otillgänglig — statisk DB räcker */ });
+}
+
+function bcApplyEvData(list) {
+  var BRAND_MAP = {
+    'Abarth':'Abarth','Alfa':'Alfa Romeo','Alpine':'Alpine',
+    'Audi':'Audi','BMW':'BMW','BYD':'BYD',
+    'Cadillac':'Cadillac',
+    'Citroën':'Citroën','Citroen':'Citroën','CitroÃ«n':'Citroën',
+    'CUPRA':'Cupra','Cupra':'Cupra',
+    'Dacia':'Dacia','DS':'DS','Fiat':'Fiat','Ford':'Ford',
+    'Genesis':'Genesis','Honda':'Honda','Hyundai':'Hyundai',
+    'Jaguar':'Jaguar','Jeep':'Jeep','Kia':'Kia',
+    'Lancia':'Lancia','Lexus':'Lexus','Lotus':'Lotus','Lucid':'Lucid',
+    'Maserati':'Maserati','Mazda':'Mazda',
+    'Mercedes-Benz':'Mercedes-Benz','Mercedes':'Mercedes-Benz',
+    'MG':'MG','MG4':'MG','MG5':'MG',
+    'MINI':'Mini','Mini':'Mini',
+    'Mitsubishi':'Mitsubishi','NIO':'Nio','Nio':'Nio',
+    'Nissan':'Nissan','Opel':'Opel','Peugeot':'Peugeot',
+    'Polestar':'Polestar','Porsche':'Porsche','Renault':'Renault',
+    'Rolls-Royce':'Rolls-Royce',
+    'SEAT':'SEAT','Seat':'SEAT',
+    'Skoda':'Skoda','Škoda':'Skoda','Å koda':'Skoda',
+    'Smart':'Smart','Subaru':'Subaru','Suzuki':'Suzuki','Tesla':'Tesla',
+    'Toyota':'Toyota','VinFast':'VinFast',
+    'Volkswagen':'Volkswagen','VW':'Volkswagen',
+    'Volvo':'Volvo','XPENG':'Xpeng','Xpeng':'Xpeng',
+    'Zeekr':'Zeekr'
+  };
+  var PREFIX_IN_MODEL = { 'MG4':true,'MG5':true };
+  var TWO_WORD = { 'Land Rover':'Land Rover','Alfa Romeo':'Alfa Romeo','Range Rover':'Land Rover','Rolls-Royce':'Rolls-Royce' };
+
+  var added = 0;
+  list.forEach(function(entry) {
+    var name = (entry.carName || '').trim();
+    if (!name || !entry.kwhPerMil) return;
+    var parts = name.split(' ');
+    var brand = null, modelParts = null;
+
+    if (parts.length >= 2) {
+      var two = parts[0] + ' ' + parts[1];
+      if (TWO_WORD[two]) { brand = TWO_WORD[two]; modelParts = parts.slice(2); }
+    }
+    if (!brand && BRAND_MAP[parts[0]]) {
+      brand = BRAND_MAP[parts[0]];
+      modelParts = PREFIX_IN_MODEL[parts[0]] ? parts : parts.slice(1);
+    }
+    if (!brand || !modelParts || !modelParts.length) return;
+
+    var model = modelParts.join(' ').replace(/\s*\(el\)\s*$/i, '').trim() + ' (el)';
+    if (!BC_CAR_DB[brand]) BC_CAR_DB[brand] = {};
+    if (!BC_CAR_DB[brand][model]) { BC_CAR_DB[brand][model] = entry.kwhPerMil; added++; }
+  });
+  if (added > 0) bcInitBrands();
 }
 
 // ── Dropdown: märken ──────────────────────────────────
