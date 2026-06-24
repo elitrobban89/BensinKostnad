@@ -446,7 +446,17 @@ function bcDemoRemaining() {
   return Math.max(0, BC_DEMO_MAX - used);
 }
 function bcUpdateDemoUI() {
-  if (bcIsLoggedIn()) return;
+  var banner   = document.getElementById('bc-demoBanner');
+  var loginCta = document.getElementById('bc-loginCta');
+
+  if (bcIsLoggedIn()) {
+    if (banner)   banner.style.display   = 'none';
+    if (loginCta) loginCta.style.display = 'none';
+    return;
+  }
+
+  if (banner) banner.style.display = 'flex';
+
   var rem = bcDemoRemaining();
   var countEl = document.getElementById('bc-demoCount');
   if (countEl) countEl.textContent = rem;

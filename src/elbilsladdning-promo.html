@@ -184,9 +184,9 @@
   position: relative;
 }
 
-/* Login state — WordPress lägger body.logged-in automatiskt */
-body:not(.logged-in) .elpromo-loggedin  { display: none; }
-body.logged-in        .elpromo-loggedout { display: none; }
+/* Dölj båda sektionerna tills JS visar rätt en */
+.elpromo-loggedin,
+.elpromo-loggedout { display: none; }
 </style>
 
 <div class="elpromo-wrap">
@@ -251,3 +251,25 @@ body.logged-in        .elpromo-loggedout { display: none; }
 
   </div>
 </div>
+
+<script>
+(function() {
+  function elpromoInit() {
+    var loggedIn = document.body.classList.contains('logged-in');
+    var inEl  = document.querySelector('.elpromo-loggedin');
+    var outEl = document.querySelector('.elpromo-loggedout');
+    if (loggedIn) {
+      if (inEl)  inEl.style.display  = 'flex';
+      if (outEl) outEl.style.display = 'none';
+    } else {
+      if (inEl)  inEl.style.display  = 'none';
+      if (outEl) outEl.style.display = 'flex';
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', elpromoInit);
+  } else {
+    elpromoInit();
+  }
+})();
+</script>
