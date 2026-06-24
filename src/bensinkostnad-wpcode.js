@@ -587,10 +587,38 @@ function bcDoCalculate(cons, pris) {
   }
 }
 
+// ── Injicera demo-UI om det saknas i HTML-blocket ────────────────
+function bcInjectDemoUI() {
+  var wrap = document.querySelector('.bc-wrap');
+  if (!wrap) return;
+
+  // Demo-banner
+  if (!document.getElementById('bc-demoBanner')) {
+    var banner = document.createElement('div');
+    banner.id = 'bc-demoBanner';
+    banner.style.cssText = 'display:none;align-items:center;gap:10px;background:rgba(251,191,36,0.08);border:1.5px solid rgba(251,191,36,0.35);border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:0.84rem;color:#92400e;line-height:1.4;font-family:inherit';
+    banner.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Demoläge — <strong><span id="bc-demoCount">5</span> av 5</strong> sökningar kvar. <a href="/logga-in/" style="color:#92400e;font-weight:700">Logga in</a> för obegränsad tillgång.</span>';
+    wrap.insertBefore(banner, wrap.firstChild);
+  }
+
+  // Login-CTA (läggs in efter results-div)
+  if (!document.getElementById('bc-loginCta')) {
+    var results = document.getElementById('bc-results');
+    if (results) {
+      var cta = document.createElement('div');
+      cta.id = 'bc-loginCta';
+      cta.style.cssText = 'display:none;flex-direction:column;gap:10px;margin-top:14px;background:linear-gradient(135deg,#1a3a5c,#2d1b69);border-radius:16px;padding:24px 22px;font-family:inherit';
+      cta.innerHTML = '<div style="font-size:1rem;font-weight:800;color:#fff">Vill du ha obegränsad tillgång?</div><p style="font-size:0.85rem;color:rgba(255,255,255,0.78);line-height:1.5;margin:0">Du kör i demoläge med <span id="bc-loginCtaCount">5</span> sökningar totalt. Logga in som prenumerant för att använda kalkylatorn utan begränsning.</p><a href="/logga-in/" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;background:#fff;color:#1e2a3a;border-radius:10px;font-size:0.88rem;font-weight:700;text-decoration:none;align-self:flex-start">Logga in</a>';
+      results.parentNode.insertBefore(cta, results.nextSibling);
+    }
+  }
+}
+
 // ── Event wiring ──────────────────────────────────────
 function bcWireEvents() {
   bcInitBrands();
   bcLoadEvConsumption();
+  bcInjectDemoUI();
 
   // Style the page h1 title
   try {
