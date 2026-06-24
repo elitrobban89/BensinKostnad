@@ -16,6 +16,9 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Bränsledtyp-badges** — visuella indikatorer (Bensin / Diesel / El) som markerar valt drivmedel
 - **Count-up animation** — siffrorna räknas upp med mjuk animation när resultaten visas
 - **Returresa** — kryssruta som dubblar sträckan för tur- och returresor (av som standard)
+- **Demo-läge** — utloggade användare får 5 gratis sökningar via localStorage-counter; blockeras därefter med login-CTA
+- **Login-medvetenhet** — demo-banner och login-CTA visas/döljs via JavaScript baserat på WordPress `body.logged-in`-klass
+- **Promo-kort** — komponent för elbilsladdningssidan som länkar till kalkylatorn; visar olika innehåll för inloggade vs utloggade
 - **Gradient-design** — kalkylatorrubrik och sidtitel har lila/indigo-gradient-styling för ett modernt utseende
 - **Responsiv design** — fungerar på mobil och desktop
 
@@ -38,8 +41,9 @@ Inkluderar märken: Audi, BMW, BYD, Citroën, Dacia, Fiat, Ford, Honda, Hyundai,
 | Fil | Beskrivning |
 |-----|-------------|
 | `src/bensinkostnad-wordpress.html` | HTML + CSS för WordPress Anpassad HTML-block |
-| `src/bensinkostnad-wpcode.js` | JavaScript för WPCode-plugin (kalkylatorlogik, GPS, karta) |
+| `src/bensinkostnad-wpcode.js` | JavaScript för WPCode-plugin (kalkylatorlogik, GPS, karta, demo-counter) |
 | `src/bensinkostnad.html` | Fristående HTML-fil för lokal testning |
+| `src/elbilsladdning-promo.html` | Promo-kort för elbilsladdningssidan — länkar till kalkylatorn med login-medveten visning |
 | `src/projekt-kort.html` | Projektkort-komponent för hemsidan |
 | `src/hemssida-effekter-wpcode.js` | Visuella effekter för hemsidans rubriker och sociala länkar |
 
