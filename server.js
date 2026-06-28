@@ -8,64 +8,39 @@ app.use((req, res, next) => {
   next();
 });
 
-// Cache 6 timmar – SCB publicerar månadsdata
+// Cache 12 timmar – GlobalPetrolPrices uppdaterar varje måndag
 let cache   = null;
 let cacheTs = 0;
-const CACHE_TTL = 6 * 60 * 60 * 1000;
+const CACHE_TTL = 12 * 60 * 60 * 1000;
 
-// Uppdateras om SCB-anropet misslyckas
 const FALLBACK = { bensin95: 18.90, diesel: 17.50, _source: 'fallback' };
 
-// SCB:s öppna API – pumppris på drivmedel (konsumentpris i SEK/liter)
-const SCB_URL = 'https://api.scb.se/OV0104/v1/doris/sv/ssd/START/PR/PR0101/PR0101E/DrivmedelM';
+const HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept-Language': 'sv-SE,sv;q=0.9,en;q=0.8'
+};
 
-async function fetchScbPrices() {
-  // Hämta variabelkoder från SCB-tabellens metadata
-  const metaRes = await fetch(SCB_URL, { signal: AbortSignal.timeout(12_000) });
-  if (!metaRes.ok) throw new Error(`SCB metadata HTTP ${metaRes.status}`);
-  const meta = await metaRes.json();
+async function fetchPrice(url) {
+  const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(12_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+  // Plockar ut första "SEK XX.XX" på sidan = aktuellt veckopris
+  const m = html.match(/SEK\s+(\d+\.\d+)/);
+  if (!m) throw new Error('Hittade inget SEK-pris på sidan');
+  return parseFloat(m[1]);
+}
 
-  const drivVar = meta.variables?.find(v => v.code === 'Drivmedel');
-  if (!drivVar) throw new Error('Hittade inte Drivmedel-variabeln');
-
-  let bensinKod = null, dieselKod = null;
-  drivVar.values.forEach((kod, i) => {
-    const label = (drivVar.valueTexts[i] || '').toLowerCase();
-    if (!bensinKod && (label.includes('bensin') || label.includes('95'))) bensinKod = kod;
-    if (!dieselKod && label.includes('diesel'))                           dieselKod = kod;
-  });
-  if (!bensinKod || !dieselKod) throw new Error(`Koder ej funna – tillgängliga: ${drivVar.valueTexts.join(', ')}`);
-
-  // Hämta senaste månadsdata
-  const query = {
-    query: [
-      { code: 'Drivmedel', selection: { filter: 'item',  values: [bensinKod, dieselKod] } },
-      { code: 'Tid',       selection: { filter: 'top',   values: ['1'] } }
-    ],
-    response: { format: 'json' }
+async function fetchPrices() {
+  const [bensin95, diesel] = await Promise.all([
+    fetchPrice('https://www.globalpetrolprices.com/Sweden/gasoline_prices/'),
+    fetchPrice('https://www.globalpetrolprices.com/Sweden/diesel_prices/')
+  ]);
+  return {
+    bensin95,
+    diesel,
+    updated: new Date().toISOString().split('T')[0],
+    _source: 'globalpetrolprices'
   };
-
-  const dataRes = await fetch(SCB_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(query),
-    signal:  AbortSignal.timeout(12_000)
-  });
-  if (!dataRes.ok) throw new Error(`SCB data HTTP ${dataRes.status}`);
-  const data = await dataRes.json();
-
-  let bensin95 = null, diesel = null, period = null;
-  (data.data || []).forEach(row => {
-    const val = parseFloat(row.values?.[0]);
-    if (isNaN(val)) return;
-    period = period || row.key?.[1];
-    if (row.key?.[0] === bensinKod) bensin95 = Math.round(val * 100) / 100;
-    if (row.key?.[0] === dieselKod) diesel   = Math.round(val * 100) / 100;
-  });
-
-  if (!bensin95 || !diesel) throw new Error('Kunde inte tolka SCB-svar');
-
-  return { bensin95, diesel, updated: period, _source: 'scb' };
 }
 
 app.get('/api/fuel-price', async (req, res) => {
@@ -73,13 +48,13 @@ app.get('/api/fuel-price', async (req, res) => {
     return res.json(cache);
   }
   try {
-    const data = await fetchScbPrices();
+    const data = await fetchPrices();
     cache   = data;
     cacheTs = Date.now();
-    console.log('Priser hämtade från SCB:', data);
+    console.log('Priser hämtade:', data);
     res.json(data);
   } catch (err) {
-    console.warn('SCB-fel, använder fallback:', err.message);
+    console.warn('Fetch misslyckades, använder fallback:', err.message);
     res.json(FALLBACK);
   }
 });
