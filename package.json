@@ -1,0 +1,16 @@
+{
+  "name": "bilresa-server",
+  "version": "1.0.0",
+  "description": "Bensinpris-API för Bilresa-kalkylatorn",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "express": "^4.19.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

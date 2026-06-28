@@ -267,6 +267,32 @@
 .bc-toggle-switch input:checked + .bc-toggle-slider { background: #3b82f6; }
 .bc-toggle-switch input:checked + .bc-toggle-slider::before { transform: translateX(18px); }
 
+.bc-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 200;
+  max-height: 210px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+.bc-suggestion-item {
+  padding: 9px 14px;
+  font-size: 0.85rem;
+  color: #1e2a3a;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bc-suggestion-item:hover { background: #eff6ff; color: #1d4ed8; }
+
 .bc-gps-row { display: flex; gap: 8px; align-items: stretch; }
 .bc-gps-row .bc-input-wrap { flex: 1; }
 .bc-gps-btn {
@@ -550,7 +576,7 @@
   <!-- DEMO-BANNER (döljs för inloggade via body.logged-in CSS) -->
   <div class="bc-demo-banner" id="bc-demoBanner">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <span>Demoläge — <strong><span id="bc-demoCount">5</span> av 5</strong> sökningar kvar. <a href="/logga-in/">Logga in</a> för obegränsad tillgång.</span>
+    <span>Demoläge — <strong><span id="bc-demoCount">5</span> av 5</strong> sökningar kvar. <a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open('https://caradvice.onrender.com/subscribe.html','_blank','width=480,height=650,resizable=yes');}return false;">Logga in</a> för obegränsad tillgång.</span>
   </div>
 
   <!-- HEADER -->
@@ -684,11 +710,20 @@
 
     <div class="bc-field">
       <label for="bc-price" id="bc-priceLabel">Pris per liter</label>
-      <div class="bc-input-wrap">
-        <input id="bc-price" type="number" class="bc-has-unit"
-               min="0" step="0.01"
-               placeholder="t.ex. 19.50" inputmode="decimal">
-        <span class="bc-unit" id="bc-priceUnit">SEK/l</span>
+      <div class="bc-gps-row">
+        <div class="bc-input-wrap">
+          <input id="bc-price" type="number" class="bc-has-unit"
+                 min="0" step="0.01"
+                 placeholder="t.ex. 19.50" inputmode="decimal">
+          <span class="bc-unit" id="bc-priceUnit">SEK/l</span>
+        </div>
+        <button class="bc-gps-btn" id="bc-priceBtn" title="Hämta aktuellt pris">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          <span id="bc-priceBtnLabel">Hämta pris</span>
+        </button>
       </div>
       <p class="bc-hint" id="bc-priceHint"></p>
     </div>
@@ -767,7 +802,7 @@
     <div class="bc-login-cta" id="bc-loginCta">
       <div class="bc-login-cta-title">Vill du ha obegränsad tillgång?</div>
       <p class="bc-login-cta-body">Du kör i demoläge med <span id="bc-loginCtaCount">5</span> sökningar totalt. Logga in som prenumerant för att använda kalkylatorn utan begränsning.</p>
-      <a class="bc-login-cta-btn" href="/logga-in/"><!-- Byt URL om inloggningssidan har annan adress -->
+      <a class="bc-login-cta-btn" href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open('https://caradvice.onrender.com/subscribe.html','_blank','width=480,height=650,resizable=yes');}return false;">
         Logga in
       </a>
     </div>
