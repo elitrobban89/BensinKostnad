@@ -16,7 +16,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Adaptivt gränssnitt** — bränslepriset byter etikett och enhet (SEK/l → SEK/kWh) vid elval
 - **Bränsletyp-badges** — visuella indikatorer (Bensin / Diesel / El) som markerar valt drivmedel
 - **Count-up animation** — siffrorna räknas upp med mjuk animation när resultaten visas
-- **Returresa** — kryssruta som dubblar sträckan för tur- och returresor
+- **Returresa** — kryssruta som dubblar sträckan; uppdaterar resultaten dynamiskt utan ny sökning
 - **EV-data caching** — CarAdvice API-svar cachas i localStorage med 24 h TTL
 - **Demo-läge** — utloggade användare får 5 gratis sökningar; blockeras därefter med login-CTA
 - **Login-medvetenhet** — WPCode JS läser WordPress `body.logged-in`-klass och injicerar demo-banner + login-CTA dynamiskt
