@@ -7,20 +7,21 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 ## Funktioner
 
 - **Stöd för bensin, diesel och el** — väljer rätt enheter och formel automatiskt baserat på fordonstyp
-- **GPS-position** — hämtar användarens position och fyller i närmaste gatuadress automatiskt
-- **Adresssökning** — stöder fullständiga gatuadresser som startpunkt och destination
-- **Automatisk ruttberäkning** — beräknar körsträckan i svenska mil via [OSRM](http://router.project-osrm.org) när destination lämnas
+- **Automatisk bränsleprishämtning** — hämtar aktuellt bensin/dieselpris från [globalpetrolprices.com](https://www.globalpetrolprices.com/Sweden/) via Bilresa-backend; cachas 6 timmar i localStorage
+- **GPS-position** — hämtar användarens position, fyller i närmaste gatuadress och triggar automatisk prisuppdatering
+- **Adressautocomplete** — Nominatim-sökning föreslår adresser medan man skriver i startfältet (320 ms debounce, nordiska länder)
+- **Automatisk ruttberäkning** — beräknar körsträckan i svenska mil via [OSRM](http://router.project-osrm.org) när destination anges
 - **Interaktiv karta** — visar rutten med A/B-markörer via [Leaflet.js](https://leafletjs.com) + OpenStreetMap
-- **Fordonsval** — 30+ bilmärken med bensin-, diesel- och elbilsmodeller som autofyller förbrukning
-- **Adaptivt gränssnitt** — bränslepriset byter etikett och enhet (SEK/l → SEK/kWh) vid elval; formeln och resultaten uppdateras
-- **Bränsledtyp-badges** — visuella indikatorer (Bensin / Diesel / El) som markerar valt drivmedel
+- **Fordonsval** — 35+ bilmärken med hundratals motorvarianter (bensin/diesel/el) inklusive DSG/DCT/EAT/EDC-automatlådor
+- **Adaptivt gränssnitt** — bränslepriset byter etikett och enhet (SEK/l → SEK/kWh) vid elval
+- **Bränsletyp-badges** — visuella indikatorer (Bensin / Diesel / El) som markerar valt drivmedel
 - **Count-up animation** — siffrorna räknas upp med mjuk animation när resultaten visas
-- **Returresa** — kryssruta som dubblar sträckan för tur- och returresor (av som standard)
-- **EV-data caching** — CarAdvice API-svar cachas i localStorage med 24h TTL; eliminerar kallstartsfördröjning på återbesök
-- **Demo-läge** — utloggade användare får 5 gratis sökningar via localStorage-counter; blockeras därefter med login-CTA (verifierat i inkognito)
-- **Login-medvetenhet** — WPCode JS läser WordPress `body.logged-in`-klass och injicerar demo-banner + login-CTA dynamiskt; HTML-blocket behöver inte uppdateras
-- **Promo-kort** — komponent för elbilsladdningssidan som länkar till kalkylatorn; visar olika innehåll för inloggade vs utloggade via JS-detection
-- **Gradient-design** — kalkylatorrubrik och sidtitel har lila/indigo-gradient-styling för ett modernt utseende
+- **Returresa** — kryssruta som dubblar sträckan för tur- och returresor
+- **EV-data caching** — CarAdvice API-svar cachas i localStorage med 24 h TTL
+- **Demo-läge** — utloggade användare får 5 gratis sökningar; blockeras därefter med login-CTA
+- **Login-medvetenhet** — WPCode JS läser WordPress `body.logged-in`-klass och injicerar demo-banner + login-CTA dynamiskt
+- **Promo-kort** — komponent för elbilsladdningssidan med login-medveten visning
+- **Gradient-design** — lila/indigo-gradient i header och sidtitel
 - **Responsiv design** — fungerar på mobil och desktop
 
 ---
@@ -29,11 +30,15 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 
 | Typ | Enhet | Exempel |
 |-----|-------|---------|
-| Bensinbil | l/10km | Golf 0,65 · Kamiq 0,70 · XC90 1,05 |
-| Dieselbil | l/10km | Golf (diesel) 0,52 · XC60 (diesel) 0,62 |
+| Bensinbil | l/10km | Golf 0,65 · Golf DSG 0,68 · Kamiq 110 hk DSG 0,69 · XC90 1,02 |
+| Dieselbil | l/10km | Golf TDI 0,52 · Tucson CRDi 0,62 · XC60 D (diesel) 0,62 |
 | Elbil | kWh/mil | ID.3 1,65 · Tesla Model Y 1,70 · IONIQ 5 1,80 |
 
-Inkluderar märken: Audi, BMW, BYD, Citroën, Dacia, Fiat, Ford, Honda, Hyundai, Jeep, Kia, Mazda, Mercedes-Benz, MG, Mini, Mitsubishi, Nissan, Opel, Peugeot, Polestar, Renault, Saab, SEAT, Skoda, Subaru, Suzuki, Tesla, Toyota, Volkswagen, Volvo m.fl.
+**35+ märken** med detaljerade motorvarianter för den svenska marknaden, bl.a.:
+
+Abarth, Alfa Romeo, Alpine, Audi, BMW, BYD, Citroën, Cupra, Dacia, DS, Fiat, Ford, Genesis, Honda, Hyundai, Jaguar, Jeep, Kia, Lancia, Land Rover, Lexus, Mazda, Mercedes-Benz, MG, Mini, Mitsubishi, Nio, Nissan, Opel, Peugeot, Polestar, Porsche, Renault, Rolls-Royce, Saab, SEAT, Skoda, Smart, Subaru, Suzuki, Tesla, Toyota, Volkswagen, Volvo, VinFast, Xpeng, Zeekr
+
+Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla populära modeller.
 
 ---
 
@@ -42,11 +47,11 @@ Inkluderar märken: Audi, BMW, BYD, Citroën, Dacia, Fiat, Ford, Honda, Hyundai,
 | Fil | Beskrivning |
 |-----|-------------|
 | `src/bensinkostnad-wordpress.html` | HTML + CSS för WordPress Anpassad HTML-block |
-| `src/bensinkostnad-wpcode.js` | JavaScript för WPCode-plugin (kalkylatorlogik, GPS, karta, demo-counter) |
-| `src/bensinkostnad.html` | Fristående HTML-fil för lokal testning |
-| `src/elbilsladdning-promo.html` | Promo-kort för elbilsladdningssidan — länkar till kalkylatorn med login-medveten visning |
-| `src/projekt-kort.html` | Projektkort-komponent för hemsidan |
-| `src/hemssida-effekter-wpcode.js` | Visuella effekter för hemsidans rubriker och sociala länkar |
+| `src/bensinkostnad-wpcode.js` | JavaScript för WPCode-plugin (kalkylatorlogik, GPS, karta, bildata, bränsleprishämtning) |
+| `src/elbilsladdning-promo.html` | Promo-kort för elbilsladdningssidan |
+| `server.js` | Node.js/Express backend — bränslepris-API |
+| `package.json` | Node.js-beroenden |
+| `Dockerfile` | Docker-konfiguration för Render.com |
 
 ---
 
@@ -57,9 +62,39 @@ Inkluderar märken: Audi, BMW, BYD, Citroën, Dacia, Fiat, Ford, Honda, Hyundai,
 | HTML / CSS / JavaScript | Frontend |
 | [Leaflet.js](https://leafletjs.com) | Interaktiv karta |
 | [OpenStreetMap](https://www.openstreetmap.org) | Kartdata |
-| [Nominatim](https://nominatim.org) | Geocoding (adress → koordinater) |
+| [Nominatim](https://nominatim.org) | Geocoding + adressautocomplete |
 | [OSRM](http://router.project-osrm.org) | Ruttberäkning |
+| Node.js + Express | Bilresa backend (bilresa.onrender.com) |
+| [globalpetrolprices.com](https://www.globalpetrolprices.com) | Bränsleprisdata (scraping, uppdateras varje måndag) |
 | WordPress + WPCode | CMS och JavaScript-injektion |
+| Docker + Render.com | Backend-hosting |
+
+---
+
+## Backend
+
+Ett minimalt Node.js/Express-API körs på `https://bilresa.onrender.com`:
+
+| Endpoint | Beskrivning |
+|----------|-------------|
+| `GET /api/fuel-price` | Returnerar aktuellt bensin95 + dieselpris för Sverige |
+| `GET /health` | Hälsokontroll |
+
+- Priset hämtas från globalpetrolprices.com (statisk HTML, uppdateras varje måndag)
+- Cachas 12 timmar på servern + 6 timmar i webbläsarens localStorage
+- Faller tillbaka på senast kända priser vid nätverksfel
+
+Kör lokalt:
+```bash
+npm install
+node server.js
+```
+
+Bygg och kör med Docker:
+```bash
+docker build -t bilresa-server .
+docker run -p 3000:3000 bilresa-server
+```
 
 ---
 
@@ -89,12 +124,6 @@ Installera pluginet [WPCode](https://wordpress.org/plugins/insert-headers-and-fo
 
 ### 3. Leaflet
 Leaflet laddas automatiskt via CDN i HTML-blocket — ingen extra installation krävs.
-
----
-
-## Lokal testning
-
-Öppna `src/bensinkostnad.html` direkt i en webbläsare. GPS kräver HTTPS i de flesta webbläsare — testa via `localhost` eller en lokal server för full funktionalitet.
 
 ---
 
