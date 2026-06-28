@@ -1324,6 +1324,45 @@ function bcDoCalculate(cons, pris) {
   }
 }
 
+// ── Räkna om direkt när returresa-kryssrutan ändras ──────────────
+// Används när resultaten redan visas – triggar inte ny rutthämtning
+// och räknar inte upp demo-countern.
+function bcRefreshCalc() {
+  var resultsEl = document.getElementById('bc-results');
+  if (!resultsEl || !resultsEl.classList.contains('show')) return;
+  var cons = parseFloat(document.getElementById('bc-cons').value);
+  var pris = parseFloat(document.getElementById('bc-price').value);
+  if (isNaN(cons) || cons <= 0 || isNaN(pris) || pris <= 0) return;
+  var milOneWay = parseFloat(document.getElementById('bc-km').value);
+  if (isNaN(milOneWay) || milOneWay <= 0) return;
+
+  var returresaEl = document.getElementById('bc-returresa');
+  var returresa   = returresaEl && returresaEl.checked;
+  var mil    = returresa ? milOneWay * 2 : milOneWay;
+  var km     = mil * 10;
+  var amount = mil * cons;
+  var kostnad = amount * pris;
+
+  bcCountUp('bc-rKm',     km,      1);
+  bcCountUp('bc-rMil',    mil,     2);
+  bcCountUp('bc-rLiters', amount,  2);
+  bcCountUp('bc-rCost',   kostnad, 2);
+
+  if (returresa) {
+    bcTrace('bc-t1', bcFmt(milOneWay,2) + ' mil × 2 (tur & retur) =', bcFmt(mil,2) + ' mil (' + bcFmt(km,1) + ' km)');
+  } else {
+    bcTrace('bc-t1', bcFmt(mil,2) + ' mil =', bcFmt(km,1) + ' km');
+  }
+  if (bcIsElectric) {
+    bcTrace('bc-t2', bcFmt(mil,2) + ' mil × ' + bcFmt(cons,2) + ' kWh/mil =', bcFmt(amount,2) + ' kWh');
+    bcTrace('bc-t3', bcFmt(amount,2) + ' kWh × ' + bcFmt(pris,2) + ' SEK/kWh =', bcFmt(kostnad,2) + ' SEK');
+  } else {
+    bcTrace('bc-t2', bcFmt(mil,2) + ' mil × ' + bcFmt(cons,2) + ' l/10km =', bcFmt(amount,2) + ' liter');
+    bcTrace('bc-t3', bcFmt(amount,2) + ' l × ' + bcFmt(pris,2) + ' SEK/l =', bcFmt(kostnad,2) + ' SEK');
+  }
+  bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
+}
+
 // ── Injicera demo-UI om det saknas i HTML-blocket ────────────────
 function bcInjectDemoUI() {
   var wrap = document.querySelector('.bc-wrap');
@@ -1386,6 +1425,9 @@ function bcWireEvents() {
   if (start)    start.addEventListener('blur',  bcAutoRoute);
   if (start)    start.addEventListener('input', function() { bcStartLat = null; bcStartLon = null; });
 
+  var returresaChk = document.getElementById('bc-returresa');
+  if (returresaChk) returresaChk.addEventListener('change', bcRefreshCalc);
+
   if (calcBtn) calcBtn.addEventListener('click', function(e) {
     var r = document.createElement('span');
     r.className = 'bc-ripple';
@@ -1408,8 +1450,9 @@ function bcWireEvents() {
     }
   });
   document.addEventListener('change', function(e) {
-    if (e.target.id === 'bc-brand') bcOnBrandChange();
-    if (e.target.id === 'bc-model') bcOnModelChange();
+    if (e.target.id === 'bc-brand')    bcOnBrandChange();
+    if (e.target.id === 'bc-model')    bcOnModelChange();
+    if (e.target.id === 'bc-returresa') bcRefreshCalc();
   });
 }
 
