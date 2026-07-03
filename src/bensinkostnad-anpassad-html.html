@@ -1,0 +1,645 @@
+<!-- ╔═══════════════════════════════════════════════════════════════╗
+     ║  BENSINKOSTNADSBERÄKNING – WordPress Custom HTML Block        ║
+     ║  Klistra in detta i ett "Anpassad HTML"-block i Gutenberg.    ║
+     ╚═══════════════════════════════════════════════════════════════╝ -->
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://caradvice.onrender.com/fuel-guard.js"></script>
+
+<div id="bc-sub-bar"></div>
+<div id="bc-content" style="display:none">
+
+<style>
+/* ── Page title gradient ── */
+.bc-page-title {
+  background: linear-gradient(135deg, #1a3a5c 0%, #4f46e5 60%, #2d1b69 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: bc-title-shift 5s ease infinite;
+  display: inline-block;
+}
+@keyframes bc-title-shift {
+  0%   { background-position: 0% center; }
+  50%  { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+.bc-wrap *, .bc-wrap *::before, .bc-wrap *::after { box-sizing: border-box; }
+
+.bc-wrap {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1e2a3a;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+.bc-header {
+  text-align: center;
+  margin-bottom: 28px;
+  background: linear-gradient(135deg, #1a3a5c 0%, #2d1b69 100%);
+  border-radius: 20px;
+  padding: 36px 24px 28px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(29,70,120,0.25);
+}
+.bc-header::before {
+  content: '';
+  position: absolute;
+  top: -50px; right: -50px;
+  width: 180px; height: 180px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.bc-header::after {
+  content: '';
+  position: absolute;
+  bottom: -40px; left: -40px;
+  width: 140px; height: 140px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.bc-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px; height: 56px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 16px;
+  margin-bottom: 14px;
+  backdrop-filter: blur(4px);
+}
+.bc-header h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  position: relative;
+}
+.bc-header p {
+  color: rgba(255,255,255,0.72);
+  font-size: 0.92rem;
+  margin: 0;
+  position: relative;
+}
+.bc-header-fuel-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  position: relative;
+}
+.bc-header-fuel-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.bc-header-fuel-pill.petrol   { background: rgba(59,130,246,0.25);  color: #93c5fd; }
+.bc-header-fuel-pill.diesel   { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.82); }
+.bc-header-fuel-pill.electric { background: rgba(16,185,129,0.25);  color: #6ee7b7; }
+
+.bc-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 22px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.bc-card:focus-within {
+  box-shadow: 0 4px 20px rgba(59,130,246,0.13);
+}
+
+.bc-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #3b82f6;
+  margin-bottom: 18px;
+}
+.bc-num {
+  width: 20px;
+  height: 20px;
+  background: #3b82f6;
+  color: #fff;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* fuel type badges inside card 2 */
+.bc-fuel-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.bc-fuel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+}
+.bc-fuel-badge.petrol   { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; opacity: 0.45; }
+.bc-fuel-badge.diesel   { background: #f3f4f6; border-color: #d1d5db; color: #374151; opacity: 0.45; }
+.bc-fuel-badge.electric { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; opacity: 0.45; }
+.bc-fuel-badge.active   { opacity: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.10); }
+.bc-fuel-badge svg { flex-shrink: 0; }
+
+.bc-field { margin-bottom: 16px; }
+.bc-field:last-child { margin-bottom: 0; }
+.bc-field label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 7px;
+}
+
+.bc-input-wrap { position: relative; }
+.bc-input-wrap input,
+.bc-input-wrap select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  color: #1e2a3a;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+}
+.bc-input-wrap input:focus,
+.bc-input-wrap select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.13);
+}
+.bc-input-wrap input::placeholder { color: #9ca3af; }
+.bc-input-wrap .bc-unit {
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #6b7280;
+  pointer-events: none;
+}
+.bc-has-unit { padding-right: 80px !important; }
+.bc-input-wrap select:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+
+.bc-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 440px) { .bc-two-col { grid-template-columns: 1fr; } }
+
+.bc-hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 5px 0 0;
+}
+.bc-hint.loading { color: #3b82f6; }
+.bc-hint.error   { color: #dc2626; }
+
+.bc-gps-row { display: flex; gap: 8px; align-items: stretch; }
+.bc-gps-row .bc-input-wrap { flex: 1; }
+.bc-gps-btn {
+  flex-shrink: 0;
+  padding: 0 14px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.35);
+  min-height: 44px;
+}
+.bc-gps-btn:hover { background: linear-gradient(135deg, #2563eb, #4f46e5); }
+.bc-gps-btn:disabled { background: linear-gradient(135deg,#93c5fd,#a5b4fc); cursor:not-allowed; }
+@keyframes bc-gps-pulse {
+  0%,100% { box-shadow: 0 2px 8px rgba(99,102,241,0.35); }
+  50%      { box-shadow: 0 2px 22px rgba(99,102,241,0.65); }
+}
+.bc-gps-btn.fetching { animation: bc-gps-pulse 1.1s ease-in-out infinite; }
+
+.bc-formula {
+  background: #f8faff;
+  border: 1.5px solid #dbeafe;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.bc-formula h3 {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  margin: 0 0 10px;
+}
+.bc-fline {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.88rem;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.bc-fline:last-child { margin-bottom: 0; }
+.bc-flabel { color: #6b7280; min-width: 90px; font-size: 0.8rem; }
+.bc-feq    { font-weight: 700; color: #3b82f6; }
+.bc-fexpr  { font-family: 'Courier New', monospace; font-size: 0.85rem; color: #1e40af; }
+
+.bc-error {
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  margin-bottom: 14px;
+  display: none;
+}
+.bc-error.show { display: block; }
+
+.bc-btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(59,130,246,0.35);
+  transition: opacity 0.15s, transform 0.1s;
+  margin-bottom: 14px;
+}
+.bc-btn:hover { opacity: 0.93; }
+.bc-btn:active { transform: scale(0.99); }
+
+.bc-calc-status {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #3b82f6;
+  min-height: 20px;
+  margin-bottom: 10px;
+}
+
+.bc-map-card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  display: none;
+}
+.bc-map-card.show { display: block; }
+.bc-map-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #3b82f6;
+  padding: 14px 20px 0;
+  margin-bottom: 10px;
+}
+#bc-map { height: 340px; width: 100%; }
+
+.bc-results { display: none; }
+.bc-results.show { display: block; }
+
+.bc-res-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #059669;
+  margin-bottom: 12px;
+}
+.bc-res-header::before {
+  content: '✓';
+  width: 20px; height: 20px;
+  background: #059669;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+.bc-res-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 400px) { .bc-res-grid { grid-template-columns: 1fr; } }
+
+.bc-res-item {
+  background: #f8faff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 14px;
+}
+.bc-res-item.bc-big {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border-color: transparent;
+}
+.bc-rlabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+.bc-big .bc-rlabel { color: rgba(255,255,255,0.75); }
+.bc-rvalue {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #1e2a3a;
+  line-height: 1;
+}
+.bc-big .bc-rvalue { font-size: 2.4rem; color: #fff; }
+.bc-runit { font-size: 0.8rem; color: #6b7280; margin-top: 3px; }
+.bc-big .bc-runit { color: rgba(255,255,255,0.75); font-size: 0.85rem; }
+
+.bc-trace {
+  margin-top: 14px;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  border: 1.5px solid #e5e7eb;
+}
+.bc-trace h4 {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b7280;
+  margin: 0 0 10px;
+}
+.bc-tline {
+  font-size: 0.84rem;
+  color: #374151;
+  margin-bottom: 6px;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.bc-tline:last-child { margin-bottom: 0; }
+.bc-tline .bc-arrow { color: #3b82f6; font-weight: 700; flex-shrink: 0; }
+.bc-tline .bc-val   { font-weight: 700; color: #1e40af; font-family: 'Courier New', monospace; }
+</style>
+
+
+<!-- ════════════════ FORMULÄR ════════════════ -->
+<div class="bc-wrap">
+
+  <!-- HEADER -->
+  <div class="bc-header">
+    <div class="bc-header-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"></path><path d="M3 10h12"></path><path d="M15 6h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"></path><line x1="3" y1="22" x2="21" y2="22"></line></svg>
+    </div>
+    <h2>Bränslekostnad­beräkning</h2>
+    <p>Ange dina uppgifter nedan och räkna ut vad resan kostar i bränsle.</p>
+    <div class="bc-header-fuel-row">
+      <span class="bc-header-fuel-pill petrol">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"></path><path d="M3 10h12"></path><path d="M15 6h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"></path><line x1="3" y1="22" x2="21" y2="22"></line></svg>
+        Bensin
+      </span>
+      <span class="bc-header-fuel-pill diesel">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14a9 3 0 0 0 18 0V5"></path><path d="M3 12a9 3 0 0 0 18 0"></path></svg>
+        Diesel
+      </span>
+      <span class="bc-header-fuel-pill electric">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        El
+      </span>
+    </div>
+  </div>
+
+  <!-- 1. STRÄCKA -->
+  <div class="bc-card">
+    <div class="bc-card-title">
+      <span class="bc-num">1</span> Sträcka
+    </div>
+
+    <div class="bc-two-col">
+      <div class="bc-field">
+        <label for="bc-start">Startpunkt</label>
+        <div class="bc-gps-row">
+          <div class="bc-input-wrap">
+            <input id="bc-start" type="text" placeholder="t.ex. Malmö">
+          </div>
+          <button class="bc-gps-btn" id="bc-gpsBtn" title="Hämta GPS-position">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line>
+            </svg>
+            <span id="bc-gpsBtnLabel">Hämta GPS</span>
+          </button>
+        </div>
+        <p class="bc-hint" id="bc-gpsHint"></p>
+      </div>
+      <div class="bc-field">
+        <label for="bc-dest">Destination</label>
+        <div class="bc-input-wrap">
+          <input id="bc-dest" type="text" placeholder="t.ex. Stockholm">
+        </div>
+      </div>
+    </div>
+
+    <div class="bc-field">
+      <label for="bc-km">Körsträcka</label>
+      <div class="bc-input-wrap">
+        <input id="bc-km" type="number" class="bc-has-unit" min="0" step="0.1" placeholder="t.ex. 61.2" inputmode="decimal">
+        <span class="bc-unit">mil</span>
+      </div>
+      <p class="bc-hint">Ange i svenska mil. 1 mil = 10 km. Fylls i automatiskt om GPS och destination är angivna.</p>
+    </div>
+  </div>
+
+  <!-- 2. FORDON -->
+  <div class="bc-card">
+    <div class="bc-card-title">
+      <span class="bc-num">2</span> Fordon &amp; förbrukning
+    </div>
+    <div class="bc-fuel-badges">
+      <span class="bc-fuel-badge petrol">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"></path><path d="M3 10h12"></path><path d="M15 6h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"></path><line x1="3" y1="22" x2="21" y2="22"></line></svg>
+        Bensin
+      </span>
+      <span class="bc-fuel-badge diesel">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14a9 3 0 0 0 18 0V5"></path><path d="M3 12a9 3 0 0 0 18 0"></path></svg>
+        Diesel
+      </span>
+      <span class="bc-fuel-badge electric">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        El
+      </span>
+    </div>
+
+    <div class="bc-two-col">
+      <div class="bc-field">
+        <label for="bc-brand">Märke</label>
+        <div class="bc-input-wrap">
+          <select id="bc-brand">
+            <option value="">Välj märke...</option>
+          </select>
+        </div>
+      </div>
+      <div class="bc-field">
+        <label for="bc-model">Modell</label>
+        <div class="bc-input-wrap">
+          <select id="bc-model" disabled="">
+            <option value="">Välj modell...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="bc-field">
+      <label for="bc-cons">Genomsnittlig förbrukning</label>
+      <div class="bc-input-wrap">
+        <input id="bc-cons" type="number" class="bc-has-unit" min="0.01" max="30" step="0.01" placeholder="t.ex. 0.85" inputmode="decimal">
+        <span class="bc-unit" id="bc-consUnit">l/10km</span>
+      </div>
+      <p class="bc-hint" id="bc-consHint">Fylls i automatiskt vid fordonsval — kan justeras manuellt. Liten bil ca 0,5–0,6 • mellanklass ca 0,7–0,9 • SUV ca 0,9–1,2</p>
+    </div>
+  </div>
+
+  <!-- 3. BRÄNSLEPRIS -->
+  <div class="bc-card">
+    <div class="bc-card-title">
+      <span class="bc-num">3</span> <span id="bc-card3Header">Bränslepris</span>
+    </div>
+
+    <div class="bc-field">
+      <label for="bc-price" id="bc-priceLabel">Pris per liter</label>
+      <div class="bc-input-wrap">
+        <input id="bc-price" type="number" class="bc-has-unit" min="0" step="0.01" placeholder="t.ex. 19.50" inputmode="decimal">
+        <span class="bc-unit" id="bc-priceUnit">SEK/l</span>
+      </div>
+      <p class="bc-hint" id="bc-priceHint"></p>
+    </div>
+  </div>
+
+  <!-- FORMEL -->
+  <div class="bc-formula">
+    <h3>Formel</h3>
+    <div class="bc-fline">
+      <span class="bc-flabel" id="bc-fLabel1">Liter åtgång</span>
+      <span class="bc-feq">=</span>
+      <span class="bc-fexpr" id="bc-fExpr1">mil × l/10km</span>
+    </div>
+    <div class="bc-fline">
+      <span class="bc-flabel">Total kostnad</span>
+      <span class="bc-feq">=</span>
+      <span class="bc-fexpr" id="bc-fExpr2">liter × SEK/liter</span>
+    </div>
+  </div>
+
+  <!-- FELMEDDELANDE -->
+  <div class="bc-error" id="bc-error"></div>
+
+  <!-- KNAPP -->
+  <button class="bc-btn" id="bc-calcBtn">Räkna ut kostnaden</button>
+
+  <!-- STATUS -->
+  <div class="bc-calc-status" id="bc-calcStatus"></div>
+
+  <!-- KARTA -->
+  <div class="bc-map-card" id="bc-mapCard">
+    <div class="bc-map-title">🗺 Rutt</div>
+    <div id="bc-map"></div>
+  </div>
+
+  <!-- RESULTAT -->
+  <div class="bc-results" id="bc-results">
+    <div class="bc-res-header">Beräknat resultat</div>
+    <div class="bc-res-grid">
+
+      <div class="bc-res-item">
+        <div class="bc-rlabel">Sträcka</div>
+        <div class="bc-rvalue" id="bc-rKm">—</div>
+        <div class="bc-runit">kilometer</div>
+      </div>
+
+      <div class="bc-res-item">
+        <div class="bc-rlabel">Sträcka</div>
+        <div class="bc-rvalue" id="bc-rMil">—</div>
+        <div class="bc-runit">svenska mil</div>
+      </div>
+
+      <div class="bc-res-item">
+        <div class="bc-rlabel" id="bc-rLitersLabel">Bränsleåtgång</div>
+        <div class="bc-rvalue" id="bc-rLiters">—</div>
+        <div class="bc-runit" id="bc-rLitersUnit">liter</div>
+      </div>
+
+      <div class="bc-res-item bc-big">
+        <div class="bc-rlabel">Total bränslekostnad</div>
+        <div class="bc-rvalue" id="bc-rCost">—</div>
+        <div class="bc-runit">svenska kronor (SEK)</div>
+      </div>
+
+    </div>
+
+    <div class="bc-trace">
+      <h4>Uträkning steg för steg</h4>
+      <div class="bc-tline" id="bc-t1"></div>
+      <div class="bc-tline" id="bc-t2"></div>
+      <div class="bc-tline" id="bc-t3"></div>
+      <div class="bc-tline" id="bc-t4"></div>
+    </div>
+  </div>
+
+</div><!-- /bc-wrap -->
+
+</div><!-- /bc-content -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

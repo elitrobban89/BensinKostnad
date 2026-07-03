@@ -186,7 +186,9 @@
 
 /* Dölj båda sektionerna tills JS visar rätt en */
 .elpromo-loggedin,
-.elpromo-loggedout { display: none; }
+.elpromo-loggedout { display: none; flex-direction: column; gap: 14px; }
+
+.elpromo-loggedin .elpromo-btn { align-self: flex-start; }
 </style>
 
 <div class="elpromo-wrap">
@@ -243,9 +245,9 @@
         <a class="elpromo-btn" href="https://elitrobban.se/branslekostnad-berakning/">
           Testa demo
         </a>
-        <a class="elpromo-btn-outline" href="/logga-in/"><!-- Byt URL om inloggningssidan har annan adress -->
+        <button class="elpromo-btn-outline" onclick="if(window.evOpenSubscribe){evOpenSubscribe();}else if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open('https://caradvice.onrender.com/subscribe.html','_blank','width=480,height=650,resizable=yes');}">
           Logga in
-        </a>
+        </button>
       </div>
     </div>
 
@@ -254,11 +256,10 @@
 
 <script>
 (function() {
-  function elpromoInit() {
-    var loggedIn = document.body.classList.contains('logged-in');
+  function elpromoRender(isSubscriber) {
     var inEl  = document.querySelector('.elpromo-loggedin');
     var outEl = document.querySelector('.elpromo-loggedout');
-    if (loggedIn) {
+    if (isSubscriber) {
       if (inEl)  inEl.style.display  = 'flex';
       if (outEl) outEl.style.display = 'none';
     } else {
@@ -266,6 +267,43 @@
       if (outEl) outEl.style.display = 'flex';
     }
   }
+
+  function elpromoInit() {
+    // Quick check from cached status first
+    var cachedStatus = localStorage.getItem('ca_status');
+    var token = localStorage.getItem('ca_token');
+    if (!token) { elpromoRender(false); return; }
+    if (cachedStatus === 'active') { elpromoRender(true); return; }
+
+    // Verify token against API
+    fetch('https://caradvice.onrender.com/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).then(function(r) {
+      if (!r.ok) throw new Error('not ok');
+      return r.json();
+    }).then(function(data) {
+      localStorage.setItem('ca_status', data.subscriptionStatus);
+      elpromoRender(data.subscriptionStatus === 'active');
+    }).catch(function() {
+      elpromoRender(false);
+    });
+  }
+
+  // Re-render if user logs in via popup
+  window.addEventListener('message', function(ev) {
+    if (!ev.data || !ev.data.type) return;
+    if (ev.data.type === 'CA_LOGIN' || ev.data.type === 'CA_SUBSCRIBED') {
+      if (ev.data.token) localStorage.setItem('ca_token', ev.data.token);
+      if (ev.data.status) localStorage.setItem('ca_status', ev.data.status);
+      elpromoRender(ev.data.status === 'active');
+    }
+    if (ev.data.type === 'CA_LOGOUT') {
+      localStorage.removeItem('ca_token');
+      localStorage.removeItem('ca_status');
+      elpromoRender(false);
+    }
+  });
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', elpromoInit);
   } else {
