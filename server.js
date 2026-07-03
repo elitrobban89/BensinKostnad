@@ -24,10 +24,14 @@ async function fetchPrice(url) {
   const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(12_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const html = await res.text();
-  // Plockar ut första "SEK XX.XX" på sidan = aktuellt veckopris
-  const m = html.match(/SEK\s+(\d+\.\d+)/);
-  if (!m) throw new Error('Hittade inget SEK-pris på sidan');
-  return parseFloat(m[1]);
+  // Dagspriset står som "SEK 16.39 per liter or USD 1.69 per liter" i brödtexten.
+  // Första "SEK X.XX" på sidan är tioårsGENOMSNITTET (i meta-taggarna) — får inte användas.
+  const m = html.match(/SEK\s+(\d+\.\d+)\s+per liter or USD/i);
+  if (m) return parseFloat(m[1]);
+  // Reserv om sidlayouten ändras: första SEK-priset (snittet) är bättre än inget
+  const avg = html.match(/SEK\s+(\d+\.\d+)/);
+  if (!avg) throw new Error('Hittade inget SEK-pris på sidan');
+  return parseFloat(avg[1]);
 }
 
 async function fetchPrices() {
