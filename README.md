@@ -18,6 +18,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Count-up animation** — siffrorna räknas upp med mjuk animation när resultaten visas
 - **Returresa** — kryssruta som dubblar sträckan; uppdaterar resultaten dynamiskt utan ny sökning
 - **EV-data caching** — CarAdvice API-svar cachas i localStorage med 24 h TTL
+- **Serverdata för bensin/diesel/hybrid** — förbrukningssiffror hämtas från CarAdvice `/api/ice-consumption` (~950 varianter ur `ice_consumption`-tabellen) vid sidladdning, 24 h localStorage-cache; den statiska databasen i JS:en är fallback när API:et inte svarar
 - **Demo-läge** — utloggade användare får 5 gratis sökningar; blockeras därefter med login-CTA
 - **Login-medvetenhet** — WPCode JS läser WordPress `body.logged-in`-klass och injicerar demo-banner + login-CTA dynamiskt
 - **Promo-kort** — komponent för elbilsladdningssidan med login-medveten visning

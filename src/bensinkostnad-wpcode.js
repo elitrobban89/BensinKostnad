@@ -8,7 +8,9 @@ var bcStartLat = null, bcStartLon = null, bcMap = null, bcRouteLayer = null;
 var bcIsElectric = false, bcIsDiesel = false;
 
 // ── Bildata: l/10km för bensin/diesel, kWh/mil för elbilar (el) ──
-// EV-förbrukning kompletteras automatiskt från CarAdvice /api/ev-consumption vid laddning
+// Förbrukning kompletteras automatiskt från CarAdvice vid laddning:
+// EV från /api/ev-consumption, bensin/diesel/hybrid från /api/ice-consumption (24h cache).
+// Den statiska databasen nedan är fallback när API:et inte svarar.
 var BC_CAR_DB = {
   "Abarth": {
     "500 1.4 T-Jet 135 hk":0.72, "595 1.4 T-Jet 160 hk":0.75, "595 Competizione 1.4 T-Jet 180 hk":0.85, "695 1.4 T-Jet 180 hk":0.88, "695 Biposto 1.4 T-Jet 190 hk":0.95
@@ -774,6 +776,59 @@ function bcApplyEvData(list) {
   if (added > 0) bcInitBrands();
 }
 
+// ── Ladda bensin/diesel/hybrid-förbrukning dynamiskt från CarAdvice ──
+// Servern (ice_consumption-tabellen) är källan framåt — den statiska BC_CAR_DB
+// är fallback när API:et inte svarar. Samma mönster som EV-laddningen ovan.
+var BC_ICE_CACHE_KEY = 'bc_ice_cache';
+var BC_ICE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 timmar
+
+function bcLoadIceConsumption() {
+  try {
+    var cached = localStorage.getItem(BC_ICE_CACHE_KEY);
+    if (cached) {
+      var obj = JSON.parse(cached);
+      if (Date.now() - obj.ts < BC_ICE_CACHE_TTL) {
+        bcApplyIceData(obj.data);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  fetch('https://caradvice.onrender.com/api/ice-consumption')
+    .then(function(r) { return r.json(); })
+    .then(function(list) {
+      try { localStorage.setItem(BC_ICE_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: list })); } catch(e) {}
+      bcApplyIceData(list);
+    })
+    .catch(function() { /* API otillgänglig — statisk DB räcker */ });
+}
+
+function bcApplyIceData(list) {
+  if (!list || !list.forEach) return;
+  // Märket i carName är alltid en exakt BC_CAR_DB-nyckel (datat genererades ur samma DB) —
+  // matcha längsta nyckelprefix så tvåordsmärken som "Alfa Romeo" och "Land Rover" fungerar
+  var brands = Object.keys(BC_CAR_DB);
+  var added = 0;
+  list.forEach(function(entry) {
+    var name = (entry.carName || '').trim();
+    if (!name || !entry.literPerMil) return;
+    var brand = null;
+    for (var i = 0; i < brands.length; i++) {
+      if (name.indexOf(brands[i] + ' ') === 0 && (!brand || brands[i].length > brand.length)) {
+        brand = brands[i];
+      }
+    }
+    if (!brand) brand = name.split(' ')[0]; // nytt märke från servern
+    var variant = name.slice(brand.length).trim();
+    if (!variant) return;
+    // Servern skickar drivmedel som eget fält; UI:t läser "(diesel)"-suffix ur namnet
+    if (entry.fuel === 'diesel' && variant.indexOf('(diesel)') === -1) variant += ' (diesel)';
+    if (!BC_CAR_DB[brand]) BC_CAR_DB[brand] = {};
+    if (!BC_CAR_DB[brand][variant]) { BC_CAR_DB[brand][variant] = entry.literPerMil; added++; }
+  });
+  if (added > 0) bcInitBrands();
+}
+
 // ── Dropdown: märken ──────────────────────────────────
 function bcInitBrands() {
   var sel = document.getElementById('bc-brand');
@@ -1394,6 +1449,7 @@ function bcInjectDemoUI() {
 function bcWireEvents() {
   bcInitBrands();
   bcLoadEvConsumption();
+  bcLoadIceConsumption();
   bcInjectDemoUI();
   bcInitStartAutocomplete();
   // Auto-hämta bensinpris vid sidladdning (om fältet är tomt)
