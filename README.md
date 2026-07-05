@@ -1,5 +1,7 @@
 # Bränslekostnadsberäkning
 
+[![Build & Test](https://github.com/elitrobban89/BensinKostnad/actions/workflows/node.yml/badge.svg)](https://github.com/elitrobban89/BensinKostnad/actions/workflows/node.yml)
+
 En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diesel- och elbilar. Byggd för WordPress och publicerad på [elitrobban.se/branslekostnad-berakning](https://elitrobban.se/branslekostnad-berakning/).
 
 ---
