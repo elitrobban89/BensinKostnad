@@ -27,11 +27,12 @@ async function fetchPrice(url) {
   // Dagspriset står som "SEK 16.39 per liter or USD 1.69 per liter" i brödtexten.
   // Första "SEK X.XX" på sidan är tioårsGENOMSNITTET (i meta-taggarna) — får inte användas.
   const m = html.match(/SEK\s+(\d+\.\d+)\s+per liter or USD/i);
-  if (m) return parseFloat(m[1]);
-  // Reserv om sidlayouten ändras: första SEK-priset (snittet) är bättre än inget
+  if (m) return { value: parseFloat(m[1]), daily: true };
+  // Reserv om sidlayouten ändras: första SEK-priset (snittet) är bättre än inget,
+  // men flaggas i _source så att en layoutändring inte passerar obemärkt
   const avg = html.match(/SEK\s+(\d+\.\d+)/);
   if (!avg) throw new Error('Hittade inget SEK-pris på sidan');
-  return parseFloat(avg[1]);
+  return { value: parseFloat(avg[1]), daily: false };
 }
 
 async function fetchPrices() {
@@ -39,11 +40,13 @@ async function fetchPrices() {
     fetchPrice('https://www.globalpetrolprices.com/Sweden/gasoline_prices/'),
     fetchPrice('https://www.globalpetrolprices.com/Sweden/diesel_prices/')
   ]);
+  const allDaily = bensin95.daily && diesel.daily;
+  if (!allDaily) console.warn('OBS: dagsprisraden hittades inte — tioårssnittet används. Kolla sidlayouten!');
   return {
-    bensin95,
-    diesel,
+    bensin95: bensin95.value,
+    diesel: diesel.value,
     updated: new Date().toISOString().split('T')[0],
-    _source: 'globalpetrolprices'
+    _source: allDaily ? 'globalpetrolprices' : 'globalpetrolprices-average'
   };
 }
 

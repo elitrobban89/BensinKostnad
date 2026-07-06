@@ -53,12 +53,16 @@ async function get(path) {
 
 test('fetchPrice läser dagspriset, inte tioårssnittet i meta-taggen', async () => {
   priceHandler = () => fakeResponse(PAGE_HTML);
-  assert.equal(await fetchPrice('https://www.globalpetrolprices.com/Sweden/gasoline_prices/'), 16.39);
+  assert.deepEqual(
+    await fetchPrice('https://www.globalpetrolprices.com/Sweden/gasoline_prices/'),
+    { value: 16.39, daily: true });
 });
 
 test('fetchPrice tar första SEK-priset som reserv om dagsraden saknas', async () => {
   priceHandler = () => fakeResponse(AVG_ONLY_HTML);
-  assert.equal(await fetchPrice('https://www.globalpetrolprices.com/Sweden/gasoline_prices/'), 17.81);
+  assert.deepEqual(
+    await fetchPrice('https://www.globalpetrolprices.com/Sweden/gasoline_prices/'),
+    { value: 17.81, daily: false });
 });
 
 test('fetchPrice kastar när sidan saknar SEK-pris', async () => {
@@ -99,6 +103,13 @@ test('/api/fuel-price svarar ur cachen vid andra anropet', async () => {
   const { body } = await get('/api/fuel-price');
   assert.equal(calls, 2); // inga nya hämtningar
   assert.equal(body.bensin95, 16.39);
+});
+
+test('/api/fuel-price flaggar i _source när reservpriset (snittet) används', async () => {
+  priceHandler = () => fakeResponse(AVG_ONLY_HTML);
+  const { body } = await get('/api/fuel-price');
+  assert.equal(body._source, 'globalpetrolprices-average');
+  assert.equal(body.bensin95, 17.81);
 });
 
 test('/api/fuel-price faller tillbaka på fasta priser när källan fallerar', async () => {
