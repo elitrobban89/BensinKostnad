@@ -65,4 +65,13 @@ app.get('/api/fuel-price', async (req, res) => {
 
 app.get('/health', (_, res) => res.json({ status: 'OK' }));
 
-app.listen(PORT, () => console.log(`Bilresa server körs på port ${PORT}`));
+function resetCache() {
+  cache   = null;
+  cacheTs = 0;
+}
+
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Bilresa server körs på port ${PORT}`));
+}
+
+module.exports = { app, fetchPrice, fetchPrices, resetCache, FALLBACK };

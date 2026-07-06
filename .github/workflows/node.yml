@@ -23,3 +23,6 @@ jobs:
         run: |
           node --check server.js
           for f in src/*.js; do node --check "$f"; done
+
+      - name: Kör testsviten
+        run: npm test
