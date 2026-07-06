@@ -101,6 +101,22 @@ docker run -p 3000:3000 bilresa-server
 
 ---
 
+## Tester & CI
+
+9 tester i `server.test.js` med Nodes inbyggda testrunner — inga extra beroenden:
+
+- **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
+- **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte
+- **`/health`** — status OK + CORS-headern
+
+```bash
+npm test
+```
+
+GitHub Actions ([node.yml](.github/workflows/node.yml)) syntaxkontrollerar och kör testsviten på varje push — badgen överst visar status.
+
+---
+
 ## Formel
 
 **Bensin / Diesel**
