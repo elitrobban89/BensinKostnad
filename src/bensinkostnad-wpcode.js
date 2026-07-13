@@ -898,6 +898,9 @@ function bcInjectEffectStyles() {
     '.bc-charge-chip:hover{border-color:#6366f1;box-shadow:0 0 10px rgba(99,102,241,0.3)}' +
     '.bc-charge-chip.active{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border-color:transparent;' +
       'box-shadow:0 2px 10px rgba(99,102,241,0.4)}' +
+    '.bc-charge-link{font-size:0.75rem;font-weight:600;color:#7c3aed;text-decoration:none;align-self:center;' +
+      'padding:6px 2px;transition:opacity 0.2s}' +
+    '.bc-charge-link:hover{opacity:0.75;text-decoration:underline;color:#7c3aed}' +
     '.bc-price-flash{animation:bcPriceFlash 1.1s ease}' +
     '@keyframes bcPriceFlash{0%{box-shadow:0 0 0 0 rgba(139,92,246,0)}35%{box-shadow:0 0 16px 3px rgba(139,92,246,0.45)}100%{box-shadow:0 0 0 0 rgba(139,92,246,0)}}' +
     '@media (prefers-reduced-motion:reduce){.bc-src-badge,.bc-src-badge .bc-src-dot,.bc-price-flash{animation:none!important}}';
@@ -1042,7 +1045,8 @@ function bcRenderChargeChips(activeKind) {
     box.innerHTML =
       '<button type="button" class="bc-charge-chip" id="bc-chipHome">🏠 Hemmaladdning</button>' +
       '<button type="button" class="bc-charge-chip" id="bc-chipFast">⚡ Snabbladdare ~' +
-        BC_EL_FAST_AVG.toFixed(2).replace('.', ',') + ' kr/kWh</button>';
+        BC_EL_FAST_AVG.toFixed(2).replace('.', ',') + ' kr/kWh</button>' +
+      '<a class="bc-charge-link" href="https://elitrobban.se/elbilsladdning/">Laddpriser per operatör →</a>';
     // Läggs efter källbadgen om den hunnit skapas, annars efter hinten
     var anchor = document.getElementById('bc-srcBadge') || hint;
     anchor.parentNode.insertBefore(box, anchor.nextSibling);
