@@ -14,6 +14,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Glödande källbadges** — pulserande LIVE-badge under prisfältet visar datakällan (grön för globalpetrolprices, violett för elprisetjustnu, bärnsten för reservpris); respekterar `prefers-reduced-motion`
 - **Laddningsval-chips** — i elläget väljs 🏠 Hemmaladdning (spotbaserat) eller ⚡ Snabbladdare (~4,75 kr/kWh snittpris, operatörerna tar ca 4–7 kr; inget öppet pris-API finns så konstanten uppdateras manuellt)
 - **Bränslejämförelse** — under resultatet visas vad samma resa kostar med de andra drivmedlen (genomsnittsbil: 0,75 l/10km bensin, 0,60 diesel, 1,7 kWh/mil el) med aktuella priser och billigare/dyrare-badge i procent
+- **CO₂ per resa** — resultatgriden får en CO₂-ruta (bensin 2,36 kg/l, diesel 2,68 kg/l vid förbränning; el 0,04 kg/kWh svensk elmix) och jämförelseraderna visar ~CO₂ per alternativ
 - **GPS-position** — hämtar användarens position, fyller i närmaste gatuadress och triggar automatisk prisuppdatering
 - **Adressautocomplete** — Nominatim-sökning föreslår adresser medan man skriver i startfältet (320 ms debounce, nordiska länder)
 - **Automatisk ruttberäkning** — beräknar körsträckan i svenska mil via [OSRM](http://router.project-osrm.org) när destination anges

@@ -1562,6 +1562,7 @@ function bcDoCalculate(cons, pris) {
     bcTrace('bc-t3', bcFmt(amount,2) + ' l × ' + bcFmt(pris,2) + ' SEK/l =', bcFmt(kostnad,2) + ' SEK');
   }
   bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
+  bcRenderCo2(amount * bcCo2Factor());
   bcRenderComparison(mil, kostnad);
 
   document.getElementById('bc-results').classList.add('show');
@@ -1613,7 +1614,36 @@ function bcRefreshCalc() {
     bcTrace('bc-t3', bcFmt(amount,2) + ' l × ' + bcFmt(pris,2) + ' SEK/l =', bcFmt(kostnad,2) + ' SEK');
   }
   bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
+  bcRenderCo2(amount * bcCo2Factor());
   bcRenderComparison(mil, kostnad);
+}
+
+// ── CO₂-utsläpp per resa ─────────────────────────────────────────
+// Bensin/diesel: kg CO₂ per liter vid förbränning (Trafikverkets schabloner).
+// El: kg CO₂ per kWh med svensk produktionsmix — inte livscykelvärden.
+var BC_CO2 = { petrol: 2.36, diesel: 2.68, electric: 0.04 };
+
+function bcCo2Factor() {
+  return bcIsElectric ? BC_CO2.electric : bcIsDiesel ? BC_CO2.diesel : BC_CO2.petrol;
+}
+
+// Injicerar en CO₂-ruta i resultatgriden (före totalkostnadskortet)
+function bcRenderCo2(co2kg) {
+  var grid = document.querySelector('#bc-results .bc-res-grid');
+  if (!grid) return;
+  var item = document.getElementById('bc-co2Item');
+  if (!item) {
+    item = document.createElement('div');
+    item.className = 'bc-res-item';
+    item.id = 'bc-co2Item';
+    item.innerHTML = '<div class="bc-rlabel">CO₂-utsläpp</div>' +
+      '<div class="bc-rvalue" id="bc-rCo2">—</div>' +
+      '<div class="bc-runit" id="bc-rCo2Unit">kg CO₂</div>';
+    grid.insertBefore(item, grid.querySelector('.bc-big'));
+  }
+  var unitEl = document.getElementById('bc-rCo2Unit');
+  if (unitEl) unitEl.textContent = bcIsElectric ? 'kg CO₂ · svensk elmix' : 'kg CO₂ · vid förbränning';
+  bcCountUp('bc-rCo2', co2kg, co2kg < 10 ? 2 : 1);
 }
 
 // ── Bränslejämförelse: samma resa med genomsnittsbil ─────────────
@@ -1684,13 +1714,16 @@ function bcRenderComparison(mil, kostnad) {
     var alts = [
       { key: 'petrol', ico: '⛽', name: 'Bensinbil',
         sub: 'snitt ' + bcFmt(BC_CMP_CONS.petrol, 2) + ' l/10km × ' + bcFmt(fuel.bensin95, 2) + ' kr/l',
-        cost: mil * BC_CMP_CONS.petrol * fuel.bensin95 },
+        cost: mil * BC_CMP_CONS.petrol * fuel.bensin95,
+        co2: mil * BC_CMP_CONS.petrol * BC_CO2.petrol },
       { key: 'diesel', ico: '🛢️', name: 'Dieselbil',
         sub: 'snitt ' + bcFmt(BC_CMP_CONS.diesel, 2) + ' l/10km × ' + bcFmt(fuel.diesel, 2) + ' kr/l',
-        cost: mil * BC_CMP_CONS.diesel * fuel.diesel },
+        cost: mil * BC_CMP_CONS.diesel * fuel.diesel,
+        co2: mil * BC_CMP_CONS.diesel * BC_CO2.diesel },
       { key: 'electric', ico: '⚡', name: 'Elbil (hemmaladdning)',
         sub: 'snitt ' + bcFmt(BC_CMP_CONS.electric, 2) + ' kWh/mil × ' + bcFmt(elPris, 2) + ' kr/kWh',
-        cost: mil * BC_CMP_CONS.electric * elPris }
+        cost: mil * BC_CMP_CONS.electric * elPris,
+        co2: mil * BC_CMP_CONS.electric * BC_CO2.electric }
     ].filter(function(a) { return a.key !== current; });
 
     var html = '<h4>Samma resa med annat drivmedel</h4>';
@@ -1702,10 +1735,12 @@ function bcRenderComparison(mil, kostnad) {
           ? '<span class="bc-cmp-diff cheaper">' + bcFmt(-diff, 0) + ' % billigare</span>'
           : '<span class="bc-cmp-diff pricier">+' + bcFmt(diff, 0) + ' % dyrare</span>';
       html += '<div class="bc-cmp-row"><span class="bc-cmp-ico">' + a.ico + '</span>' +
-        '<span class="bc-cmp-name">' + a.name + '<small>' + a.sub + '</small></span>' +
+        '<span class="bc-cmp-name">' + a.name +
+          '<small>' + a.sub + ' · ~' + bcFmt(a.co2, a.co2 < 10 ? 1 : 0) + ' kg CO₂</small></span>' +
         '<span class="bc-cmp-cost">' + bcFmt(a.cost, 0) + ' kr</span>' + badge + '</div>';
     });
-    html += '<p class="bc-cmp-note">Jämförelsen gäller en genomsnittsbil med aktuella priser — din bils faktiska förbrukning kan avvika.</p>';
+    html += '<p class="bc-cmp-note">Jämförelsen gäller en genomsnittsbil med aktuella priser — din bils faktiska förbrukning kan avvika. ' +
+      'CO₂ avser förbränning (bensin/diesel) resp. svensk elmix (el), inte livscykel.</p>';
     box.innerHTML = html;
   });
 }
