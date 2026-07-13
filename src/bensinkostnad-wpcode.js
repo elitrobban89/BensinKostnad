@@ -901,6 +901,19 @@ function bcInjectEffectStyles() {
     '.bc-charge-link{font-size:0.75rem;font-weight:600;color:#7c3aed;text-decoration:none;align-self:center;' +
       'padding:6px 2px;transition:opacity 0.2s}' +
     '.bc-charge-link:hover{opacity:0.75;text-decoration:underline;color:#7c3aed}' +
+    '.bc-compare{background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;padding:16px 18px;margin-bottom:14px}' +
+    '.bc-compare h4{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin:0 0 6px}' +
+    '.bc-cmp-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9;flex-wrap:wrap}' +
+    '.bc-cmp-row:last-of-type{border-bottom:none}' +
+    '.bc-cmp-ico{font-size:1.15rem;flex-shrink:0}' +
+    '.bc-cmp-name{flex:1;min-width:140px;font-size:0.85rem;font-weight:600;color:#374151}' +
+    '.bc-cmp-name small{display:block;font-weight:400;color:#9ca3af;font-size:0.72rem;margin-top:1px}' +
+    '.bc-cmp-cost{font-weight:800;color:#1e2a3a;font-size:0.95rem;white-space:nowrap}' +
+    '.bc-cmp-diff{font-size:0.72rem;font-weight:700;border-radius:999px;padding:4px 10px;white-space:nowrap}' +
+    '.bc-cmp-diff.cheaper{color:#059669;background:rgba(16,185,129,0.10);box-shadow:0 0 8px rgba(16,185,129,0.25)}' +
+    '.bc-cmp-diff.pricier{color:#dc2626;background:rgba(239,68,68,0.08)}' +
+    '.bc-cmp-diff.same{color:#6b7280;background:#f3f4f6}' +
+    '.bc-cmp-note{font-size:0.7rem;color:#9ca3af;margin:8px 0 0}' +
     '.bc-price-flash{animation:bcPriceFlash 1.1s ease}' +
     '@keyframes bcPriceFlash{0%{box-shadow:0 0 0 0 rgba(139,92,246,0)}35%{box-shadow:0 0 16px 3px rgba(139,92,246,0.45)}100%{box-shadow:0 0 0 0 rgba(139,92,246,0)}}' +
     '@media (prefers-reduced-motion:reduce){.bc-src-badge,.bc-src-badge .bc-src-dot,.bc-price-flash{animation:none!important}}';
@@ -1549,6 +1562,7 @@ function bcDoCalculate(cons, pris) {
     bcTrace('bc-t3', bcFmt(amount,2) + ' l × ' + bcFmt(pris,2) + ' SEK/l =', bcFmt(kostnad,2) + ' SEK');
   }
   bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
+  bcRenderComparison(mil, kostnad);
 
   document.getElementById('bc-results').classList.add('show');
   document.getElementById('bc-mapCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1599,6 +1613,101 @@ function bcRefreshCalc() {
     bcTrace('bc-t3', bcFmt(amount,2) + ' l × ' + bcFmt(pris,2) + ' SEK/l =', bcFmt(kostnad,2) + ' SEK');
   }
   bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
+  bcRenderComparison(mil, kostnad);
+}
+
+// ── Bränslejämförelse: samma resa med genomsnittsbil ─────────────
+// Genomsnittsförbrukning för jämförelseraderna (svensk blandad körning)
+var BC_CMP_CONS = { petrol: 0.75, diesel: 0.60, electric: 1.70 };
+var bcCmpToken = 0; // skyddar mot att en långsam hämtning skriver över en nyare beräkning
+
+// Priser utan UI-sidoeffekter — läser samma localStorage-cache som prisknapparna
+function bcGetFuelPricesAsync() {
+  try {
+    var c = localStorage.getItem(BC_FUEL_CACHE_KEY);
+    if (c) {
+      var obj = JSON.parse(c);
+      if (Date.now() - obj.ts < BC_FUEL_CACHE_TTL) return Promise.resolve(obj.data);
+    }
+  } catch(e) {}
+  return fetch('https://bilresa.onrender.com/api/fuel-price')
+    .then(function(r) { if (!r.ok) throw new Error('no data'); return r.json(); })
+    .then(function(data) {
+      try { localStorage.setItem(BC_FUEL_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data })); } catch(e) {}
+      return data;
+    })
+    .catch(function() { return { bensin95: BC_FUEL_FALLBACK.bensin95, diesel: BC_FUEL_FALLBACK.diesel }; });
+}
+
+function bcGetElHomePriceAsync() {
+  var zone = bcElZoneFromLat(bcCurrentLat);
+  var cacheKey = BC_EL_CACHE_KEY + '_' + zone;
+  function estimate(data) {
+    return data && typeof data.spot === 'number'
+      ? data.spot * 1.25 + BC_EL_SURCHARGE
+      : BC_EL_FALLBACK_TOTAL;
+  }
+  try {
+    var c = localStorage.getItem(cacheKey);
+    if (c) {
+      var obj = JSON.parse(c);
+      if (Date.now() - obj.ts < BC_EL_CACHE_TTL) return Promise.resolve(estimate(obj.data));
+    }
+  } catch(e) {}
+  return fetch('https://bilresa.onrender.com/api/electricity-price?zone=' + zone)
+    .then(function(r) { if (!r.ok) throw new Error('no data'); return r.json(); })
+    .then(function(data) {
+      try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: data })); } catch(e) {}
+      return estimate(data);
+    })
+    .catch(function() { return BC_EL_FALLBACK_TOTAL; });
+}
+
+function bcRenderComparison(mil, kostnad) {
+  bcInjectEffectStyles();
+  var trace = document.querySelector('#bc-results .bc-trace');
+  if (!trace) return;
+  var box = document.getElementById('bc-compare');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'bc-compare';
+    box.className = 'bc-compare';
+    trace.insertAdjacentElement('afterend', box);
+  }
+  box.innerHTML = '<h4>Samma resa med annat drivmedel</h4><p class="bc-cmp-note">Hämtar aktuella priser…</p>';
+  var token = ++bcCmpToken;
+
+  Promise.all([bcGetFuelPricesAsync(), bcGetElHomePriceAsync()]).then(function(res) {
+    if (token !== bcCmpToken) return; // en nyare beräkning äger rutan nu
+    var fuel = res[0], elPris = res[1];
+    var current = bcIsElectric ? 'electric' : bcIsDiesel ? 'diesel' : 'petrol';
+    var alts = [
+      { key: 'petrol', ico: '⛽', name: 'Bensinbil',
+        sub: 'snitt ' + bcFmt(BC_CMP_CONS.petrol, 2) + ' l/10km × ' + bcFmt(fuel.bensin95, 2) + ' kr/l',
+        cost: mil * BC_CMP_CONS.petrol * fuel.bensin95 },
+      { key: 'diesel', ico: '🛢️', name: 'Dieselbil',
+        sub: 'snitt ' + bcFmt(BC_CMP_CONS.diesel, 2) + ' l/10km × ' + bcFmt(fuel.diesel, 2) + ' kr/l',
+        cost: mil * BC_CMP_CONS.diesel * fuel.diesel },
+      { key: 'electric', ico: '⚡', name: 'Elbil (hemmaladdning)',
+        sub: 'snitt ' + bcFmt(BC_CMP_CONS.electric, 2) + ' kWh/mil × ' + bcFmt(elPris, 2) + ' kr/kWh',
+        cost: mil * BC_CMP_CONS.electric * elPris }
+    ].filter(function(a) { return a.key !== current; });
+
+    var html = '<h4>Samma resa med annat drivmedel</h4>';
+    alts.forEach(function(a) {
+      var diff = (a.cost - kostnad) / kostnad * 100;
+      var badge = Math.abs(diff) < 2
+        ? '<span class="bc-cmp-diff same">ungefär samma</span>'
+        : diff < 0
+          ? '<span class="bc-cmp-diff cheaper">' + bcFmt(-diff, 0) + ' % billigare</span>'
+          : '<span class="bc-cmp-diff pricier">+' + bcFmt(diff, 0) + ' % dyrare</span>';
+      html += '<div class="bc-cmp-row"><span class="bc-cmp-ico">' + a.ico + '</span>' +
+        '<span class="bc-cmp-name">' + a.name + '<small>' + a.sub + '</small></span>' +
+        '<span class="bc-cmp-cost">' + bcFmt(a.cost, 0) + ' kr</span>' + badge + '</div>';
+    });
+    html += '<p class="bc-cmp-note">Jämförelsen gäller en genomsnittsbil med aktuella priser — din bils faktiska förbrukning kan avvika.</p>';
+    box.innerHTML = html;
+  });
 }
 
 // ── Injicera demo-UI om det saknas i HTML-blocket ────────────────

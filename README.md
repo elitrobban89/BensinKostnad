@@ -13,6 +13,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Automatiskt elpris** — spotpriset hämtas från [elprisetjustnu.se](https://www.elprisetjustnu.se) för rätt elområde (SE1–SE4 väljs via GPS-latitud); fältet fylls med ett uppskattat hemmaladdningspris (spot × 1,25 moms + schablon 1,25 kr för energiskatt, nätavgift och påslag), cachas 1 timme
 - **Glödande källbadges** — pulserande LIVE-badge under prisfältet visar datakällan (grön för globalpetrolprices, violett för elprisetjustnu, bärnsten för reservpris); respekterar `prefers-reduced-motion`
 - **Laddningsval-chips** — i elläget väljs 🏠 Hemmaladdning (spotbaserat) eller ⚡ Snabbladdare (~4,75 kr/kWh snittpris, operatörerna tar ca 4–7 kr; inget öppet pris-API finns så konstanten uppdateras manuellt)
+- **Bränslejämförelse** — under resultatet visas vad samma resa kostar med de andra drivmedlen (genomsnittsbil: 0,75 l/10km bensin, 0,60 diesel, 1,7 kWh/mil el) med aktuella priser och billigare/dyrare-badge i procent
 - **GPS-position** — hämtar användarens position, fyller i närmaste gatuadress och triggar automatisk prisuppdatering
 - **Adressautocomplete** — Nominatim-sökning föreslår adresser medan man skriver i startfältet (320 ms debounce, nordiska länder)
 - **Automatisk ruttberäkning** — beräknar körsträckan i svenska mil via [OSRM](http://router.project-osrm.org) när destination anges
