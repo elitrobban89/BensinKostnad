@@ -914,6 +914,13 @@ function bcInjectEffectStyles() {
     '.bc-cmp-diff.pricier{color:#dc2626;background:rgba(239,68,68,0.08)}' +
     '.bc-cmp-diff.same{color:#6b7280;background:#f3f4f6}' +
     '.bc-cmp-note{font-size:0.7rem;color:#9ca3af;margin:8px 0 0}' +
+    '.bc-share-row{display:flex;justify-content:center;margin-bottom:14px}' +
+    '.bc-share-btn{display:inline-flex;align-items:center;gap:7px;border:1.5px solid #c7d2fe;background:#fff;color:#4f46e5;' +
+      'border-radius:999px;padding:10px 20px;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:inherit;line-height:1;' +
+      'transition:border-color 0.2s,box-shadow 0.2s,background 0.2s,color 0.2s}' +
+    '.bc-share-btn:hover{border-color:#6366f1;box-shadow:0 0 14px rgba(99,102,241,0.35)}' +
+    '.bc-share-btn.copied{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border-color:transparent;' +
+      'box-shadow:0 0 14px rgba(16,185,129,0.45)}' +
     '.bc-price-flash{animation:bcPriceFlash 1.1s ease}' +
     '@keyframes bcPriceFlash{0%{box-shadow:0 0 0 0 rgba(139,92,246,0)}35%{box-shadow:0 0 16px 3px rgba(139,92,246,0.45)}100%{box-shadow:0 0 0 0 rgba(139,92,246,0)}}' +
     '@media (prefers-reduced-motion:reduce){.bc-src-badge,.bc-src-badge .bc-src-dot,.bc-price-flash{animation:none!important}}';
@@ -955,7 +962,7 @@ function bcFlashPrice(el) {
 }
 
 function bcFetchFuelPrice(city, lat, lon) {
-  if (bcIsElectric) return;
+  if (bcIsElectric || bcSharedApplying) return;
   var btn  = document.getElementById('bc-priceBtn');
   var lbl  = document.getElementById('bc-priceBtnLabel');
   var hint = document.getElementById('bc-priceHint');
@@ -1091,7 +1098,7 @@ function bcSelectChargeMode(kind) {
 }
 
 function bcFetchElPrice() {
-  if (!bcIsElectric) return;
+  if (!bcIsElectric || bcSharedApplying) return;
   var btn  = document.getElementById('bc-priceBtn');
   var lbl  = document.getElementById('bc-priceBtnLabel');
   var hint = document.getElementById('bc-priceHint');
@@ -1564,6 +1571,9 @@ function bcDoCalculate(cons, pris) {
   bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
   bcRenderCo2(amount * bcCo2Factor());
   bcRenderComparison(mil, kostnad);
+  bcRenderShareButton();
+  // Håll adressfältets URL delbar — bokmärke/kopiera fungerar direkt
+  try { history.replaceState(null, '', bcBuildShareUrl()); } catch(e) {}
 
   document.getElementById('bc-results').classList.add('show');
   document.getElementById('bc-mapCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1644,6 +1654,94 @@ function bcRenderCo2(co2kg) {
   var unitEl = document.getElementById('bc-rCo2Unit');
   if (unitEl) unitEl.textContent = bcIsElectric ? 'kg CO₂ · svensk elmix' : 'kg CO₂ · vid förbränning';
   bcCountUp('bc-rCo2', co2kg, co2kg < 10 ? 2 : 1);
+}
+
+// ── Delbara länkar: beräkningen kodas i URL-hashen (#bc=...) ─────
+// Hashen skickas aldrig till servern och stör därmed inte WordPress-cachen.
+var bcSharedApplying = false; // stoppar auto-prishämtningar från att skriva över delade värden
+
+function bcBuildShareUrl() {
+  var p = new URLSearchParams();
+  function add(key, id) {
+    var el = document.getElementById(id);
+    if (el && el.value && el.value.trim()) p.set(key, el.value.trim());
+  }
+  add('start', 'bc-start');
+  add('dest',  'bc-dest');
+  add('mil',   'bc-km');
+  p.set('mode', bcIsElectric ? 'el' : bcIsDiesel ? 'diesel' : 'bensin');
+  add('cons', 'bc-cons');
+  add('pris', 'bc-price');
+  var retur = document.getElementById('bc-returresa');
+  if (retur && retur.checked) p.set('retur', '1');
+  return location.origin + location.pathname + location.search + '#bc=' + p.toString();
+}
+
+function bcApplySharedLink() {
+  if (location.hash.indexOf('#bc=') !== 0) return false;
+  var p;
+  try { p = new URLSearchParams(location.hash.slice(4)); } catch(e) { return false; }
+  bcSharedApplying = true;
+  var modeMap = { el: 'electric', diesel: 'diesel', bensin: 'petrol' };
+  bcSetFuelMode(modeMap[p.get('mode')] || 'petrol');
+  function setVal(id, v) { var el = document.getElementById(id); if (el && v) el.value = v; }
+  setVal('bc-start', p.get('start'));
+  setVal('bc-dest',  p.get('dest'));
+  setVal('bc-km',    p.get('mil'));
+  setVal('bc-cons',  p.get('cons'));
+  setVal('bc-price', p.get('pris'));
+  var retur = document.getElementById('bc-returresa');
+  if (retur) retur.checked = p.get('retur') === '1';
+  // Kör beräkningen så den delade länken visar resultatet direkt.
+  // Flaggan släpps först här så modbytets schemalagda prishämtning hunnit no-op:a.
+  setTimeout(function() { bcSharedApplying = false; bcCalculate(); }, 300);
+  return true;
+}
+
+function bcRenderShareButton() {
+  bcInjectEffectStyles();
+  var anchor = document.getElementById('bc-compare') || document.querySelector('#bc-results .bc-trace');
+  if (!anchor) return;
+  var row = document.getElementById('bc-shareRow');
+  if (!row) {
+    row = document.createElement('div');
+    row.id = 'bc-shareRow';
+    row.className = 'bc-share-row';
+    row.innerHTML = '<button type="button" class="bc-share-btn" id="bc-shareBtn">🔗 Dela beräkningen</button>';
+    anchor.insertAdjacentElement('afterend', row);
+    document.getElementById('bc-shareBtn').addEventListener('click', bcShareCalculation);
+  }
+}
+
+function bcShareCalculation() {
+  var url = bcBuildShareUrl();
+  try { history.replaceState(null, '', url); } catch(e) {}
+  var btn = document.getElementById('bc-shareBtn');
+  function confirmCopied() {
+    if (!btn) return;
+    btn.textContent = '✓ Länk kopierad!';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.innerHTML = '🔗 Dela beräkningen';
+      btn.classList.remove('copied');
+    }, 2200);
+  }
+  function copyFallback() {
+    var ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); confirmCopied(); } catch(e) {}
+    ta.remove();
+  }
+  if (navigator.share) {
+    navigator.share({ title: 'Bränslekostnadsberäkning', url: url }).catch(function() {});
+  } else if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(confirmCopied, copyFallback);
+  } else {
+    copyFallback();
+  }
 }
 
 // ── Bränslejämförelse: samma resa med genomsnittsbil ─────────────
@@ -1779,8 +1877,10 @@ function bcWireEvents() {
   bcLoadIceConsumption();
   bcInjectDemoUI();
   bcInitStartAutocomplete();
-  // Auto-hämta bensinpris vid sidladdning (om fältet är tomt)
-  setTimeout(bcAutoFetchFuelPrice, 600);
+  // Delad länk? Fyll i fälten och räkna — annars auto-hämta bensinpris
+  if (!bcApplySharedLink()) {
+    setTimeout(bcAutoFetchFuelPrice, 600);
+  }
 
   // Style the page h1 title
   try {
