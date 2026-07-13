@@ -38,30 +38,42 @@
 .bc-header {
   text-align: center;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #1a3a5c 0%, #3730a3 50%, #2d1b69 100%);
+  background: linear-gradient(135deg, #1a3a5c 0%, #3730a3 40%, #2d1b69 70%, #1a3a5c 100%);
+  background-size: 300% 300%;
+  animation: bc-header-drift 16s ease infinite;
   border-radius: 24px 24px 0 0;
   padding: 40px 24px 32px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 8px 40px rgba(29,70,120,0.30);
 }
+@keyframes bc-header-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
 .bc-header::before {
   content: '';
   position: absolute;
   top: -50px; right: -50px;
   width: 180px; height: 180px;
-  background: rgba(255,255,255,0.06);
+  background: radial-gradient(circle, rgba(139,92,246,0.22), rgba(255,255,255,0.04) 70%);
   border-radius: 50%;
   pointer-events: none;
+  animation: bc-blob-float 9s ease-in-out infinite;
 }
 .bc-header::after {
   content: '';
   position: absolute;
   bottom: -40px; left: -40px;
   width: 140px; height: 140px;
-  background: rgba(255,255,255,0.04);
+  background: radial-gradient(circle, rgba(59,130,246,0.18), rgba(255,255,255,0.03) 70%);
   border-radius: 50%;
   pointer-events: none;
+  animation: bc-blob-float 12s ease-in-out infinite reverse;
+}
+@keyframes bc-blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-16px, 12px) scale(1.15); }
 }
 .bc-header-icon {
   display: inline-flex;
@@ -72,6 +84,11 @@
   border-radius: 16px;
   margin-bottom: 14px;
   backdrop-filter: blur(4px);
+  animation: bc-icon-glow 3.2s ease-in-out infinite;
+}
+@keyframes bc-icon-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(139,92,246,0.30); }
+  50%      { box-shadow: 0 0 26px rgba(139,92,246,0.60); }
 }
 .bc-header h2 {
   font-size: 2rem;
@@ -119,7 +136,11 @@
   box-shadow: 0 2px 12px rgba(30,42,58,0.08);
   border: 1.5px solid rgba(226,232,240,0.8);
   position: relative;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s;
+}
+.bc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(30,42,58,0.12);
 }
 .bc-card::before {
   content: '';
@@ -178,11 +199,18 @@
   font-size: 0.75rem;
   font-weight: 700;
   border: 1.5px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s, box-shadow 0.25s, transform 0.2s;
 }
+.bc-fuel-badge:hover { opacity: 0.8; transform: translateY(-1px); }
 .bc-fuel-badge.petrol   { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; opacity: 0.45; }
 .bc-fuel-badge.diesel   { background: #f3f4f6; border-color: #d1d5db; color: #374151; opacity: 0.45; }
 .bc-fuel-badge.electric { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; opacity: 0.45; }
-.bc-fuel-badge.active   { opacity: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.10); }
+.bc-fuel-badge.active   { opacity: 1; transform: scale(1.06); }
+.bc-fuel-badge.petrol.active   { box-shadow: 0 0 14px rgba(59,130,246,0.45); }
+.bc-fuel-badge.diesel.active   { box-shadow: 0 0 14px rgba(107,114,128,0.40); }
+.bc-fuel-badge.electric.active { box-shadow: 0 0 14px rgba(16,185,129,0.50); }
 .bc-fuel-badge svg { flex-shrink: 0; }
 
 .bc-field { margin-bottom: 16px; }
@@ -400,10 +428,15 @@
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 18px rgba(99,102,241,0.40);
-  transition: background-position 0.4s, transform 0.12s, box-shadow 0.18s;
+  transition: transform 0.12s, box-shadow 0.18s;
+  animation: bc-btn-gradient 6s ease infinite;
   position: relative;
   overflow: hidden;
   letter-spacing: 0.01em;
+}
+@keyframes bc-btn-gradient {
+  0%, 100% { background-position: 0% center; }
+  50%      { background-position: 100% center; }
 }
 .bc-btn::after {
   content: '';
@@ -414,7 +447,7 @@
   transform: skewX(-20deg);
   transition: left 0.5s;
 }
-.bc-btn:hover { background-position: right center; box-shadow: 0 6px 24px rgba(99,102,241,0.50); }
+.bc-btn:hover { box-shadow: 0 6px 28px rgba(124,58,237,0.55); transform: translateY(-1px); }
 .bc-btn:hover::after { left: 120%; }
 .bc-btn:active { transform: scale(0.99); box-shadow: 0 2px 10px rgba(99,102,241,0.35); }
 
@@ -435,7 +468,11 @@
   border: 1.5px solid rgba(226,232,240,0.8);
   display: none;
 }
-.bc-map-card.show { display: block; }
+.bc-map-card.show { display: block; animation: bc-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes bc-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
 .bc-map-title {
   font-size: 0.72rem;
   font-weight: 700;
@@ -448,7 +485,7 @@
 #bc-map { height: 340px; width: 100%; }
 
 .bc-results { display: none; }
-.bc-results.show { display: block; }
+.bc-results.show { display: block; animation: bc-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
 
 .bc-results-inner {
   margin: 0 12px;
@@ -493,12 +530,22 @@
   border-radius: 14px;
   padding: 18px 16px;
   box-shadow: 0 1px 4px rgba(30,42,58,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.bc-res-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(30,42,58,0.10);
 }
 .bc-res-item.bc-big {
   grid-column: 1 / -1;
   background: linear-gradient(135deg, #3b82f6 0%, #6366f1 60%, #7c3aed 100%);
+  background-size: 200% auto;
   border-color: transparent;
-  box-shadow: 0 4px 18px rgba(99,102,241,0.35);
+  animation: bc-btn-gradient 8s ease infinite, bc-big-glow 3.2s ease-in-out infinite;
+}
+@keyframes bc-big-glow {
+  0%, 100% { box-shadow: 0 4px 18px rgba(99,102,241,0.35); }
+  50%      { box-shadow: 0 6px 32px rgba(124,58,237,0.55); }
 }
 .bc-rlabel {
   font-size: 0.72rem;
@@ -577,7 +624,11 @@
   background: linear-gradient(135deg, #3b82f6, #6366f1);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 2px 8px rgba(99,102,241,0.40);
+  animation: bc-step-glow 2.8s ease-in-out infinite;
+}
+@keyframes bc-step-glow {
+  0%, 100% { box-shadow: 0 2px 8px rgba(99,102,241,0.40); }
+  50%      { box-shadow: 0 2px 16px rgba(99,102,241,0.70); }
 }
 .bc-step-label {
   font-size: 0.65rem;
@@ -665,6 +716,15 @@
   position: relative;
 }
 .bc-login-cta-btn:hover { transform: translateY(-1px); text-decoration: none; color: #1e2a3a; }
+
+/* Stäng av rörelseeffekter för användare som bett om det */
+@media (prefers-reduced-motion: reduce) {
+  .bc-page-title,
+  .bc-wrap, .bc-wrap *, .bc-wrap *::before, .bc-wrap *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 </style>
 
 

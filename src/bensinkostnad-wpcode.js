@@ -1644,6 +1644,17 @@ function bcWireEvents() {
       if (el.id === 'bc-gpsBtn')   { bcFetchGPS();  break; }
       if (el.id === 'bc-calcBtn')  { bcCalculate(); break; }
       if (el.id === 'bc-priceBtn') { bcAutoFetchFuelPrice(); break; }
+      if (el.classList && el.classList.contains('bc-fuel-badge')) {
+        var newMode = el.classList.contains('electric') ? 'electric'
+                    : el.classList.contains('diesel')   ? 'diesel' : 'petrol';
+        // l/10km och kWh/mil är olika enheter — rensa förbrukningen vid byte el ↔ fossilt
+        if ((newMode === 'electric') !== bcIsElectric) {
+          var consEl = document.getElementById('bc-cons');
+          if (consEl) consEl.value = '';
+        }
+        bcSetFuelMode(newMode);
+        break;
+      }
       el = el.parentNode;
     }
   });
