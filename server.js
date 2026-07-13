@@ -66,6 +66,48 @@ app.get('/api/fuel-price', async (req, res) => {
   }
 });
 
+// ── Elpris: spotpris per elområde från elprisetjustnu.se ──────────
+// Timpriser — cachas per zon och timme. Datumet i URL:en måste vara
+// svensk lokaltid (servern kör UTC; kring midnatt skiljer sig dygnen åt).
+const EL_ZONES = ['SE1', 'SE2', 'SE3', 'SE4'];
+const EL_FALLBACK_SPOT = 0.80; // SEK/kWh exkl moms, ungefärligt
+let elCache = {};
+
+function elPriceUrl(zone, now) {
+  const [y, m, d] = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Stockholm' })
+    .format(now).split('-');
+  return `https://www.elprisetjustnu.se/api/v1/prices/${y}/${m}-${d}_${zone}.json`;
+}
+
+async function fetchSpotPrice(zone, now = new Date()) {
+  const res = await fetch(elPriceUrl(zone, now), { headers: HEADERS, signal: AbortSignal.timeout(12_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const hours = await res.json();
+  const t = now.getTime();
+  const cur = hours.find(h =>
+    new Date(h.time_start).getTime() <= t && t < new Date(h.time_end).getTime());
+  if (!cur) throw new Error('Ingen prisrad för aktuell timme');
+  return { zone, spot: cur.SEK_per_kWh, updated: cur.time_start, _source: 'elprisetjustnu' };
+}
+
+app.get('/api/electricity-price', async (req, res) => {
+  const zone = String(req.query.zone || 'SE3').toUpperCase();
+  if (!EL_ZONES.includes(zone)) {
+    return res.status(400).json({ error: 'Ogiltig zon — använd SE1, SE2, SE3 eller SE4' });
+  }
+  const hourKey = new Date().toISOString().slice(0, 13);
+  const hit = elCache[zone];
+  if (hit && hit.hourKey === hourKey) return res.json(hit.data);
+  try {
+    const data = await fetchSpotPrice(zone);
+    elCache[zone] = { hourKey, data };
+    res.json(data);
+  } catch (err) {
+    console.warn('Elprishämtning misslyckades, använder fallback:', err.message);
+    res.json({ zone, spot: EL_FALLBACK_SPOT, _source: 'fallback' });
+  }
+});
+
 // priceCache: 'warm'/'cold' — UptimeRobot-nyckelordsövervakning kan larma
 // om skrapningen slutat fungera, inte bara om servern är nere
 app.get('/health', (_, res) => res.json({
@@ -76,6 +118,7 @@ app.get('/health', (_, res) => res.json({
 function resetCache() {
   cache   = null;
   cacheTs = 0;
+  elCache = {};
 }
 
 // Förvärm cachen vid start så första anropet efter en deploy/omstart
@@ -95,4 +138,4 @@ if (require.main === module) {
   warmUpCache();
 }
 
-module.exports = { app, fetchPrice, fetchPrices, resetCache, warmUpCache, FALLBACK };
+module.exports = { app, fetchPrice, fetchPrices, fetchSpotPrice, resetCache, warmUpCache, FALLBACK, EL_FALLBACK_SPOT };

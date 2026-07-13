@@ -10,6 +10,8 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 
 - **Stöd för bensin, diesel och el** — väljer rätt enheter och formel automatiskt baserat på fordonstyp
 - **Automatisk bränsleprishämtning** — hämtar aktuellt bensin/dieselpris från [globalpetrolprices.com](https://www.globalpetrolprices.com/Sweden/) via Bilresa-backend; cachas 6 timmar i localStorage
+- **Automatiskt elpris** — spotpriset hämtas från [elprisetjustnu.se](https://www.elprisetjustnu.se) för rätt elområde (SE1–SE4 väljs via GPS-latitud); fältet fylls med ett uppskattat hemmaladdningspris (spot × 1,25 moms + schablon 1,25 kr för energiskatt, nätavgift och påslag), cachas 1 timme
+- **Glödande källbadges** — pulserande LIVE-badge under prisfältet visar datakällan (grön för globalpetrolprices, violett för elprisetjustnu, bärnsten för reservpris); respekterar `prefers-reduced-motion`
 - **GPS-position** — hämtar användarens position, fyller i närmaste gatuadress och triggar automatisk prisuppdatering
 - **Adressautocomplete** — Nominatim-sökning föreslår adresser medan man skriver i startfältet (320 ms debounce, nordiska länder)
 - **Automatisk ruttberäkning** — beräknar körsträckan i svenska mil via [OSRM](http://router.project-osrm.org) när destination anges
@@ -67,6 +69,7 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | [OpenStreetMap](https://www.openstreetmap.org) | Kartdata |
 | [Nominatim](https://nominatim.org) | Geocoding + adressautocomplete |
 | [OSRM](http://router.project-osrm.org) | Ruttberäkning |
+| [elprisetjustnu.se](https://www.elprisetjustnu.se) | Spotpris el per elområde (öppet API) |
 | Node.js + Express | Bilresa backend (bilresa.onrender.com) |
 | [globalpetrolprices.com](https://www.globalpetrolprices.com) | Bränsleprisdata (scraping, uppdateras varje måndag) |
 | WordPress + WPCode | CMS och JavaScript-injektion |
@@ -81,6 +84,7 @@ Ett minimalt Node.js/Express-API körs på `https://bilresa.onrender.com`:
 | Endpoint | Beskrivning |
 |----------|-------------|
 | `GET /api/fuel-price` | Returnerar aktuellt bensin95 + dieselpris för Sverige |
+| `GET /api/electricity-price?zone=SE3` | Aktuellt spotpris (SEK/kWh exkl moms) för ett elområde, från elprisetjustnu.se; cachas per zon och timme |
 | `GET /health` | Hälsokontroll — `priceCache: warm/cold` visar om prisskrapningen fungerar |
 
 - Priset hämtas från globalpetrolprices.com (statisk HTML, uppdateras varje måndag)
@@ -105,10 +109,11 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-13 tester i `server.test.js` med Nodes inbyggda testrunner — inga extra beroenden:
+19 tester i `server.test.js` med Nodes inbyggda testrunner — inga extra beroenden:
 
 - **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
 - **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte, `_source: 'globalpetrolprices-average'` flaggar när reservpriset används (sidlayouten har ändrats)
+- **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, fallback vid nätverksfel eller när prisraden saknas
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå
 

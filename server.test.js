@@ -1,7 +1,7 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { app, fetchPrice, resetCache, warmUpCache, FALLBACK } = require('./server');
+const { app, fetchPrice, resetCache, warmUpCache, FALLBACK, EL_FALLBACK_SPOT } = require('./server');
 
 // Utdrag ur en riktig GlobalPetrolPrices-sida: första SEK-priset (meta/snitt)
 // får INTE användas — dagspriset är det som följs av "or USD".
@@ -16,18 +16,39 @@ function fakeResponse(html, status = 200) {
   return { ok: status >= 200 && status < 300, status, text: async () => html };
 }
 
-// Mockar global fetch för globalpetrolprices-URL:er men släpper igenom
+function fakeJsonResponse(data, status = 200) {
+  return { ok: status >= 200 && status < 300, status, json: async () => data };
+}
+
+// Timprislista från elprisetjustnu.se där en rad täcker "nu"
+function elHours(spotNow = 0.52) {
+  const now = Date.now();
+  const hourStart = Math.floor(now / 3_600_000) * 3_600_000;
+  return [-1, 0, 1].map(offset => ({
+    SEK_per_kWh: offset === 0 ? spotNow : 9.99,
+    time_start: new Date(hourStart + offset * 3_600_000).toISOString(),
+    time_end: new Date(hourStart + (offset + 1) * 3_600_000).toISOString()
+  }));
+}
+
+// Mockar global fetch för externa pris-URL:er men släpper igenom
 // anrop till den lokala testservern.
 const realFetch = globalThis.fetch;
 let priceHandler;
+let elHandler;
 
 beforeEach(() => {
   resetCache();
   priceHandler = null;
+  elHandler = null;
   globalThis.fetch = (url, opts) => {
     if (String(url).includes('globalpetrolprices.com')) {
       if (!priceHandler) throw new Error('Testet satte ingen priceHandler');
       return Promise.resolve(priceHandler(String(url)));
+    }
+    if (String(url).includes('elprisetjustnu.se')) {
+      if (!elHandler) throw new Error('Testet satte ingen elHandler');
+      return Promise.resolve(elHandler(String(url)));
     }
     return realFetch(url, opts);
   };
@@ -125,6 +146,60 @@ test('misslyckad hämtning cachas inte — nästa anrop försöker igen', async 
   priceHandler = () => fakeResponse(PAGE_HTML);
   const { body } = await get('/api/fuel-price');
   assert.equal(body._source, 'globalpetrolprices');
+});
+
+// --- /api/electricity-price: spotpris per elområde ---
+
+test('/api/electricity-price returnerar spotpriset för aktuell timme (SE3 default)', async () => {
+  elHandler = (url) => {
+    assert.match(url, /\/\d{4}\/\d{2}-\d{2}_SE3\.json$/);
+    return fakeJsonResponse(elHours(0.52));
+  };
+  const { status, body } = await get('/api/electricity-price');
+  assert.equal(status, 200);
+  assert.equal(body.zone, 'SE3');
+  assert.equal(body.spot, 0.52);
+  assert.equal(body._source, 'elprisetjustnu');
+});
+
+test('/api/electricity-price hämtar rätt zon och gemener normaliseras', async () => {
+  elHandler = (url) => {
+    assert.match(url, /_SE1\.json$/);
+    return fakeJsonResponse(elHours(1.10));
+  };
+  const { body } = await get('/api/electricity-price?zone=se1');
+  assert.equal(body.zone, 'SE1');
+  assert.equal(body.spot, 1.10);
+});
+
+test('/api/electricity-price avvisar ogiltig zon med 400', async () => {
+  const { status, body } = await get('/api/electricity-price?zone=SE9');
+  assert.equal(status, 400);
+  assert.match(body.error, /Ogiltig zon/);
+});
+
+test('/api/electricity-price cachar per zon och timme', async () => {
+  let calls = 0;
+  elHandler = () => { calls++; return fakeJsonResponse(elHours(0.52)); };
+  await get('/api/electricity-price?zone=SE3');
+  await get('/api/electricity-price?zone=SE3');
+  assert.equal(calls, 1); // andra anropet ur cachen
+  await get('/api/electricity-price?zone=SE4');
+  assert.equal(calls, 2); // annan zon hämtar separat
+});
+
+test('/api/electricity-price faller tillbaka på fast pris när källan fallerar', async () => {
+  elHandler = () => { throw new Error('nätverksfel'); };
+  const { status, body } = await get('/api/electricity-price');
+  assert.equal(status, 200);
+  assert.equal(body.spot, EL_FALLBACK_SPOT);
+  assert.equal(body._source, 'fallback');
+});
+
+test('/api/electricity-price faller tillbaka när ingen rad täcker aktuell timme', async () => {
+  elHandler = () => fakeJsonResponse([]);
+  const { body } = await get('/api/electricity-price');
+  assert.equal(body._source, 'fallback');
 });
 
 // --- övrigt ---

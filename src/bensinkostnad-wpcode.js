@@ -592,6 +592,7 @@ var BC_CAR_DB = {
 
 // ── Bränsleläge ───────────────────────────────────────
 function bcSetFuelMode(mode) {
+  var wasElectric = bcIsElectric;
   bcIsElectric = mode === 'electric';
   bcIsDiesel   = mode === 'diesel';
 
@@ -617,6 +618,9 @@ function bcSetFuelMode(mode) {
   var priceBtn = document.getElementById('bc-priceBtn');
   var priceBtnLbl = document.getElementById('bc-priceBtnLabel');
 
+  // Pris i SEK/l och SEK/kWh är inte utbytbara — rensa vid byte el ↔ fossilt
+  if (priceInput && wasElectric !== bcIsElectric) priceInput.value = '';
+
   if (bcIsElectric) {
     if (consUnit)    consUnit.textContent    = 'kWh/mil';
     if (consHint)    consHint.textContent    = 'En elbil drar i genomsnitt 1,5 till 2,0 kWh per mil. Ange din bils förbrukning i kWh/mil.';
@@ -630,7 +634,10 @@ function bcSetFuelMode(mode) {
     if (rLitersLbl)  rLitersLbl.textContent  = 'Energiåtgång';
     if (rLitersUnit) rLitersUnit.textContent = 'kWh';
     if (priceInput)  priceInput.placeholder  = 't.ex. 2.50';
-    if (priceBtn)    priceBtn.style.display  = 'none';
+    if (priceBtn)    priceBtn.style.display  = '';
+    if (priceBtnLbl) priceBtnLbl.textContent = 'Hämta elpris';
+    // Hämta spotpris om fältet är tomt
+    if (priceInput && !priceInput.value) setTimeout(bcFetchElPrice, 0);
   } else if (bcIsDiesel) {
     if (consUnit)    consUnit.textContent    = 'l/10km';
     if (consHint)    consHint.innerHTML      = 'Dieselförbrukning per 10 km. Kompakt ca 0,5 &bull; mellanklass ca 0,55–0,65 &bull; SUV ca 0,65–0,80';
@@ -662,6 +669,8 @@ function bcSetFuelMode(mode) {
     if (priceInput)  priceInput.placeholder  = 't.ex. 19.50';
     if (priceBtn)    priceBtn.style.display  = '';
     if (priceBtnLbl) priceBtnLbl.textContent = 'Hämta pris';
+    // Hämta bensinpris om fältet är tomt (t.ex. efter byte från el)
+    if (priceInput && !priceInput.value) setTimeout(bcAutoFetchFuelPrice, 0);
   }
 }
 
@@ -887,6 +896,61 @@ var bcCurrentCity = null;
 var bcCurrentLat  = null;
 var bcCurrentLon  = null;
 
+// ── Glödande källbadge + effekter ─────────────────────
+function bcInjectEffectStyles() {
+  if (document.getElementById('bc-effect-styles')) return;
+  var s = document.createElement('style');
+  s.id = 'bc-effect-styles';
+  s.textContent =
+    '.bc-src-badge{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:5px 13px;border-radius:999px;' +
+      'font-size:0.72rem;font-weight:700;letter-spacing:0.03em;font-family:inherit;line-height:1;user-select:none}' +
+    '.bc-src-badge .bc-src-dot{width:7px;height:7px;border-radius:50%;background:currentColor;' +
+      'animation:bcDotPulse 1.6s ease-in-out infinite}' +
+    '.bc-src-badge.live{color:#059669;border:1.5px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.07);' +
+      'animation:bcGlowGreen 2.6s ease-in-out infinite}' +
+    '.bc-src-badge.el{color:#7c3aed;border:1.5px solid rgba(139,92,246,0.45);background:rgba(139,92,246,0.08);' +
+      'animation:bcGlowViolet 2.6s ease-in-out infinite}' +
+    '.bc-src-badge.fallback{color:#b45309;border:1.5px solid rgba(251,191,36,0.45);background:rgba(251,191,36,0.08)}' +
+    '.bc-src-badge.fallback .bc-src-dot{animation:none}' +
+    '@keyframes bcGlowGreen{0%,100%{box-shadow:0 0 6px rgba(16,185,129,0.25)}50%{box-shadow:0 0 16px rgba(16,185,129,0.55)}}' +
+    '@keyframes bcGlowViolet{0%,100%{box-shadow:0 0 6px rgba(139,92,246,0.3)}50%{box-shadow:0 0 18px rgba(139,92,246,0.6)}}' +
+    '@keyframes bcDotPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.45;transform:scale(0.75)}}' +
+    '.bc-price-flash{animation:bcPriceFlash 1.1s ease}' +
+    '@keyframes bcPriceFlash{0%{box-shadow:0 0 0 0 rgba(139,92,246,0)}35%{box-shadow:0 0 16px 3px rgba(139,92,246,0.45)}100%{box-shadow:0 0 0 0 rgba(139,92,246,0)}}' +
+    '@media (prefers-reduced-motion:reduce){.bc-src-badge,.bc-src-badge .bc-src-dot,.bc-price-flash{animation:none!important}}';
+  document.head.appendChild(s);
+}
+
+// kind: 'fuel' (grön, globalpetrolprices) · 'el' (violett, elprisetjustnu) · 'fallback' (bärnsten)
+function bcSetSourceBadge(kind) {
+  bcInjectEffectStyles();
+  var hint = document.getElementById('bc-priceHint');
+  if (!hint || !hint.parentNode) return;
+  var badge = document.getElementById('bc-srcBadge');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.id = 'bc-srcBadge';
+    hint.parentNode.insertBefore(badge, hint.nextSibling);
+  }
+  if (kind === 'el') {
+    badge.className = 'bc-src-badge el';
+    badge.innerHTML = '<span class="bc-src-dot"></span>LIVE · elprisetjustnu.se';
+  } else if (kind === 'fuel') {
+    badge.className = 'bc-src-badge live';
+    badge.innerHTML = '<span class="bc-src-dot"></span>LIVE · globalpetrolprices.com';
+  } else {
+    badge.className = 'bc-src-badge fallback';
+    badge.innerHTML = '<span class="bc-src-dot"></span>RESERVPRIS · kan avvika';
+  }
+}
+
+function bcFlashPrice(el) {
+  bcInjectEffectStyles();
+  el.classList.remove('bc-price-flash');
+  void el.offsetWidth; // starta om animationen
+  el.classList.add('bc-price-flash');
+}
+
 function bcFetchFuelPrice(city, lat, lon) {
   if (bcIsElectric) return;
   var btn  = document.getElementById('bc-priceBtn');
@@ -910,7 +974,7 @@ function bcFetchFuelPrice(city, lat, lon) {
   function applyPrice(data) {
     var price = bcIsDiesel ? data.diesel : data.bensin95;
     var priceEl = document.getElementById('bc-price');
-    if (priceEl) priceEl.value = price.toFixed(2);
+    if (priceEl) { priceEl.value = price.toFixed(2); bcFlashPrice(priceEl); }
     if (hint) {
       var location = data._city ? ' i ' + data._city : '';
       var src = data._source === 'fallback'
@@ -918,6 +982,7 @@ function bcFetchFuelPrice(city, lat, lon) {
         : 'Aktuellt pris' + location + ' · uppdaterat ' + (data.updated || 'idag');
       hint.textContent = src;
       hint.className = 'bc-hint';
+      bcSetSourceBadge(data._source === 'fallback' ? 'fallback' : 'fuel');
     }
     if (btn) { btn.disabled = false; btn.classList.remove('fetching'); }
     if (lbl) lbl.textContent = 'Hämta pris';
@@ -949,8 +1014,85 @@ function bcFetchFuelPrice(city, lat, lon) {
 }
 
 function bcAutoFetchFuelPrice(city, lat, lon) {
-  if (bcIsElectric) return;
+  if (bcIsElectric) { bcFetchElPrice(); return; }
   bcFetchFuelPrice(city || bcCurrentCity || null, lat || bcCurrentLat || null, lon || bcCurrentLon || null);
+}
+
+// ── Elpris: spotpris från elprisetjustnu.se via Bilresa-backend ──
+var BC_EL_CACHE_KEY = 'bc_el_cache';
+var BC_EL_CACHE_TTL = 60 * 60 * 1000; // 1 timme — spotpriset ändras varje timme
+
+// Schablon för hemmaladdning ovanpå spotpriset (SEK/kWh inkl moms):
+// energiskatt ~0,69 + överföringsavgift ~0,45 + elhandlarpåslag ~0,10
+var BC_EL_SURCHARGE = 1.25;
+var BC_EL_FALLBACK_TOTAL = 2.00; // används när backend inte svarar alls
+
+// Grov latitudmappning till elområde — gränserna går vid ungefär
+// Umeå (SE1/SE2), Gävle (SE2/SE3) och norra Skåne/Kalmar (SE3/SE4)
+function bcElZoneFromLat(lat) {
+  if (!lat) return 'SE3';
+  if (lat >= 63.6) return 'SE1';
+  if (lat >= 61.0) return 'SE2';
+  if (lat >= 57.0) return 'SE3';
+  return 'SE4';
+}
+
+function bcFetchElPrice() {
+  if (!bcIsElectric) return;
+  var btn  = document.getElementById('bc-priceBtn');
+  var lbl  = document.getElementById('bc-priceBtnLabel');
+  var hint = document.getElementById('bc-priceHint');
+  if (btn) { btn.disabled = true; btn.classList.add('fetching'); }
+  if (lbl) lbl.textContent = 'Hämtar...';
+  if (hint) { hint.textContent = 'Hämtar aktuellt spotpris...'; hint.className = 'bc-hint loading'; }
+
+  var zone = bcElZoneFromLat(bcCurrentLat);
+  var cacheKey = BC_EL_CACHE_KEY + '_' + zone;
+  var cached = null;
+  try {
+    var c = localStorage.getItem(cacheKey);
+    if (c) {
+      var obj = JSON.parse(c);
+      if (Date.now() - obj.ts < BC_EL_CACHE_TTL) cached = obj.data;
+    }
+  } catch(e) {}
+
+  function applyElPrice(data) {
+    // Spotpriset är exkl moms — hemmaladdningspris = spot × 1,25 + schablon
+    var estimate = data._source === 'unavailable'
+      ? BC_EL_FALLBACK_TOTAL
+      : data.spot * 1.25 + BC_EL_SURCHARGE;
+    var priceEl = document.getElementById('bc-price');
+    if (priceEl) { priceEl.value = estimate.toFixed(2); bcFlashPrice(priceEl); }
+    if (hint) {
+      if (data._source === 'elprisetjustnu') {
+        hint.textContent = 'Spotpris ' + data.zone + ' just nu ' + data.spot.toFixed(2).replace('.', ',') +
+          ' kr/kWh · uppskattat hemmaladdningspris inkl moms, skatt & nätavgift';
+        bcSetSourceBadge('el');
+      } else {
+        hint.textContent = 'Ungefärligt hemmaladdningspris · kan variera med avtal och elområde';
+        bcSetSourceBadge('fallback');
+      }
+      hint.className = 'bc-hint';
+    }
+    if (btn) { btn.disabled = false; btn.classList.remove('fetching'); }
+    if (lbl) lbl.textContent = 'Hämta elpris';
+  }
+
+  if (cached) { applyElPrice(cached); return; }
+
+  fetch('https://bilresa.onrender.com/api/electricity-price?zone=' + zone)
+    .then(function(r) {
+      if (!r.ok) throw new Error('no data');
+      return r.json();
+    })
+    .then(function(data) {
+      try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: data })); } catch(e) {}
+      applyElPrice(data);
+    })
+    .catch(function() {
+      applyElPrice({ zone: zone, spot: null, _source: 'unavailable' });
+    });
 }
 
 // ── Autocomplete för startpunkt ───────────────────────
@@ -1474,7 +1616,7 @@ function bcWireEvents() {
   var priceBtn = document.getElementById('bc-priceBtn');
 
   if (gpsBtn)   gpsBtn.addEventListener('click', bcFetchGPS);
-  if (priceBtn) priceBtn.addEventListener('click', function() { bcFetchFuelPrice(bcCurrentCity, bcCurrentLat, bcCurrentLon); });
+  if (priceBtn) priceBtn.addEventListener('click', function() { bcAutoFetchFuelPrice(); });
   if (brand)    brand.addEventListener('change', bcOnBrandChange);
   if (model)    model.addEventListener('change', bcOnModelChange);
   if (dest)     dest.addEventListener('blur',  bcAutoRoute);
@@ -1501,7 +1643,7 @@ function bcWireEvents() {
     while (el && el !== document) {
       if (el.id === 'bc-gpsBtn')   { bcFetchGPS();  break; }
       if (el.id === 'bc-calcBtn')  { bcCalculate(); break; }
-      if (el.id === 'bc-priceBtn') { bcFetchFuelPrice(bcCurrentCity, bcCurrentLat, bcCurrentLon); break; }
+      if (el.id === 'bc-priceBtn') { bcAutoFetchFuelPrice(); break; }
       el = el.parentNode;
     }
   });
