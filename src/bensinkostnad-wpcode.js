@@ -672,6 +672,10 @@ function bcSetFuelMode(mode) {
     // Hämta bensinpris om fältet är tomt (t.ex. efter byte från el)
     if (priceInput && !priceInput.value) setTimeout(bcAutoFetchFuelPrice, 0);
   }
+
+  // Laddningsval-chips hör bara hemma i elläget
+  var chargeChips = document.getElementById('bc-chargeChips');
+  if (chargeChips) chargeChips.style.display = bcIsElectric ? 'flex' : 'none';
 }
 
 // ── Ladda EV-förbrukning dynamiskt från CarAdvice ────────────────
@@ -690,37 +694,6 @@ function bcLoadEvConsumption() {
       }
     }
   } catch(e) {}
-
-  // Mappar första ordet i carName → märkesnamn i BC_CAR_DB
-  var BRAND_MAP = {
-    'Abarth':'Abarth','Alfa':'Alfa Romeo','Alpine':'Alpine',
-    'Audi':'Audi','BMW':'BMW','BYD':'BYD',
-    'Cadillac':'Cadillac',
-    'Citroën':'Citroën','Citroen':'Citroën','CitroÃ«n':'Citroën',
-    'CUPRA':'Cupra','Cupra':'Cupra',
-    'Dacia':'Dacia','DS':'DS','Fiat':'Fiat','Ford':'Ford',
-    'Genesis':'Genesis','Honda':'Honda','Hyundai':'Hyundai',
-    'Jaguar':'Jaguar','Jeep':'Jeep','Kia':'Kia',
-    'Lancia':'Lancia','Lexus':'Lexus','Lotus':'Lotus','Lucid':'Lucid',
-    'Maserati':'Maserati','Mazda':'Mazda',
-    'Mercedes-Benz':'Mercedes-Benz','Mercedes':'Mercedes-Benz',
-    'MG':'MG','MG4':'MG','MG5':'MG',
-    'MINI':'Mini','Mini':'Mini',
-    'Mitsubishi':'Mitsubishi','NIO':'Nio','Nio':'Nio',
-    'Nissan':'Nissan','Opel':'Opel','Peugeot':'Peugeot',
-    'Polestar':'Polestar','Porsche':'Porsche','Renault':'Renault',
-    'Rolls-Royce':'Rolls-Royce',
-    'SEAT':'SEAT','Seat':'SEAT',
-    'Skoda':'Skoda','Škoda':'Skoda','Å koda':'Skoda',
-    'Smart':'Smart','Subaru':'Subaru','Suzuki':'Suzuki','Tesla':'Tesla',
-    'Toyota':'Toyota','VinFast':'VinFast',
-    'Volkswagen':'Volkswagen','VW':'Volkswagen',
-    'Volvo':'Volvo','XPENG':'Xpeng','Xpeng':'Xpeng',
-    'Zeekr':'Zeekr'
-  };
-  // Märken vars prefix-ord ingår i modellnamnet (t.ex. "MG4 Long Range" → märke MG, modell "MG4 Long Range")
-  var PREFIX_IN_MODEL = { 'MG4':true,'MG5':true };
-  var TWO_WORD = { 'Land Rover':'Land Rover','Alfa Romeo':'Alfa Romeo','Range Rover':'Land Rover','Rolls-Royce':'Rolls-Royce' };
 
   fetch('https://caradvice.onrender.com/api/ev-consumption')
     .then(function(r) { return r.json(); })
@@ -779,6 +752,9 @@ function bcApplyEvData(list) {
     if (!brand || !modelParts || !modelParts.length) return;
 
     var model = modelParts.join(' ').replace(/\s*\(el\)\s*$/i, '').trim() + ' (el)';
+    // MG-modeller heter "MG ..." i den statiska databasen ("MG ZS EV", "MG4 EV") —
+    // normalisera API-namnen likadant så listan inte blandar "IM5..." och "MG..."
+    if (brand === 'MG' && model.indexOf('MG') !== 0) model = 'MG ' + model;
     if (!BC_CAR_DB[brand]) BC_CAR_DB[brand] = {};
     if (!BC_CAR_DB[brand][model]) { BC_CAR_DB[brand][model] = entry.kwhPerMil; added++; }
   });
@@ -915,13 +891,21 @@ function bcInjectEffectStyles() {
     '@keyframes bcGlowGreen{0%,100%{box-shadow:0 0 6px rgba(16,185,129,0.25)}50%{box-shadow:0 0 16px rgba(16,185,129,0.55)}}' +
     '@keyframes bcGlowViolet{0%,100%{box-shadow:0 0 6px rgba(139,92,246,0.3)}50%{box-shadow:0 0 18px rgba(139,92,246,0.6)}}' +
     '@keyframes bcDotPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.45;transform:scale(0.75)}}' +
+    '.bc-charge-chips{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}' +
+    '.bc-charge-chip{border:1.5px solid #c7d2fe;background:#fff;color:#4f46e5;border-radius:999px;padding:7px 13px;' +
+      'font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;line-height:1;' +
+      'transition:border-color 0.2s,box-shadow 0.2s,background 0.2s,color 0.2s}' +
+    '.bc-charge-chip:hover{border-color:#6366f1;box-shadow:0 0 10px rgba(99,102,241,0.3)}' +
+    '.bc-charge-chip.active{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border-color:transparent;' +
+      'box-shadow:0 2px 10px rgba(99,102,241,0.4)}' +
     '.bc-price-flash{animation:bcPriceFlash 1.1s ease}' +
     '@keyframes bcPriceFlash{0%{box-shadow:0 0 0 0 rgba(139,92,246,0)}35%{box-shadow:0 0 16px 3px rgba(139,92,246,0.45)}100%{box-shadow:0 0 0 0 rgba(139,92,246,0)}}' +
     '@media (prefers-reduced-motion:reduce){.bc-src-badge,.bc-src-badge .bc-src-dot,.bc-price-flash{animation:none!important}}';
   document.head.appendChild(s);
 }
 
-// kind: 'fuel' (grön, globalpetrolprices) · 'el' (violett, elprisetjustnu) · 'fallback' (bärnsten)
+// kind: 'fuel' (grön, globalpetrolprices) · 'el' (violett, elprisetjustnu)
+//     · 'fast' (bärnsten, snittpris snabbladdare) · 'fallback' (bärnsten)
 function bcSetSourceBadge(kind) {
   bcInjectEffectStyles();
   var hint = document.getElementById('bc-priceHint');
@@ -938,6 +922,9 @@ function bcSetSourceBadge(kind) {
   } else if (kind === 'fuel') {
     badge.className = 'bc-src-badge live';
     badge.innerHTML = '<span class="bc-src-dot"></span>LIVE · globalpetrolprices.com';
+  } else if (kind === 'fast') {
+    badge.className = 'bc-src-badge fallback';
+    badge.innerHTML = '<span class="bc-src-dot"></span>SNITTPRIS · snabbladdare';
   } else {
     badge.className = 'bc-src-badge fallback';
     badge.innerHTML = '<span class="bc-src-dot"></span>RESERVPRIS · kan avvika';
@@ -1027,6 +1014,10 @@ var BC_EL_CACHE_TTL = 60 * 60 * 1000; // 1 timme — spotpriset ändras varje ti
 var BC_EL_SURCHARGE = 1.25;
 var BC_EL_FALLBACK_TOTAL = 2.00; // används när backend inte svarar alls
 
+// Genomsnittligt snabbladdarpris (SEK/kWh inkl moms) — inget öppet API finns,
+// operatörerna tar ca 4–7 kr/kWh; uppdateras manuellt vid behov
+var BC_EL_FAST_AVG = 4.75;
+
 // Grov latitudmappning till elområde — gränserna går vid ungefär
 // Umeå (SE1/SE2), Gävle (SE2/SE3) och norra Skåne/Kalmar (SE3/SE4)
 function bcElZoneFromLat(lat) {
@@ -1035,6 +1026,51 @@ function bcElZoneFromLat(lat) {
   if (lat >= 61.0) return 'SE2';
   if (lat >= 57.0) return 'SE3';
   return 'SE4';
+}
+
+// Laddningsval-chips (🏠 Hemma / ⚡ Snabbladdare) — visas bara i elläget.
+// Skapas vid första anropet, därefter växlas bara synlighet och aktiv chip.
+function bcRenderChargeChips(activeKind) {
+  bcInjectEffectStyles();
+  var hint = document.getElementById('bc-priceHint');
+  if (!hint || !hint.parentNode) return;
+  var box = document.getElementById('bc-chargeChips');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'bc-chargeChips';
+    box.className = 'bc-charge-chips';
+    box.innerHTML =
+      '<button type="button" class="bc-charge-chip" id="bc-chipHome">🏠 Hemmaladdning</button>' +
+      '<button type="button" class="bc-charge-chip" id="bc-chipFast">⚡ Snabbladdare ~' +
+        BC_EL_FAST_AVG.toFixed(2).replace('.', ',') + ' kr/kWh</button>';
+    // Läggs efter källbadgen om den hunnit skapas, annars efter hinten
+    var anchor = document.getElementById('bc-srcBadge') || hint;
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
+    document.getElementById('bc-chipHome').addEventListener('click', function() { bcSelectChargeMode('home'); });
+    document.getElementById('bc-chipFast').addEventListener('click', function() { bcSelectChargeMode('fast'); });
+  }
+  box.style.display = bcIsElectric ? 'flex' : 'none';
+  var home = document.getElementById('bc-chipHome');
+  var fast = document.getElementById('bc-chipFast');
+  if (home) home.classList.toggle('active', activeKind === 'home');
+  if (fast) fast.classList.toggle('active', activeKind === 'fast');
+}
+
+function bcSelectChargeMode(kind) {
+  if (!bcIsElectric) return;
+  if (kind === 'fast') {
+    var priceEl = document.getElementById('bc-price');
+    if (priceEl) { priceEl.value = BC_EL_FAST_AVG.toFixed(2); bcFlashPrice(priceEl); }
+    var hint = document.getElementById('bc-priceHint');
+    if (hint) {
+      hint.textContent = 'Genomsnittligt snabbladdarpris · operatörerna tar ca 4–7 kr/kWh';
+      hint.className = 'bc-hint';
+    }
+    bcSetSourceBadge('fast');
+    bcRenderChargeChips('fast');
+  } else {
+    bcFetchElPrice(); // hämtar spotpriset och markerar hemma-chippen
+  }
 }
 
 function bcFetchElPrice() {
@@ -1075,6 +1111,7 @@ function bcFetchElPrice() {
       }
       hint.className = 'bc-hint';
     }
+    bcRenderChargeChips('home');
     if (btn) { btn.disabled = false; btn.classList.remove('fetching'); }
     if (lbl) lbl.textContent = 'Hämta elpris';
   }
