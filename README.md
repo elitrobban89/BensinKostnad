@@ -113,13 +113,27 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-19 tester i `server.test.js` med Nodes inbyggda testrunner — inga extra beroenden:
+37 tester med Nodes inbyggda testrunner — inga extra beroenden.
+
+**Backend (`server.test.js`, 19 st):**
 
 - **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
 - **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte, `_source: 'globalpetrolprices-average'` flaggar när reservpriset används (sidlayouten har ändrats)
 - **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, fallback vid nätverksfel eller när prisraden saknas
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå
+
+**Frontend (`frontend.test.js`, 18 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
+
+- **Elzoner** — latitud → SE1–SE4 (Kiruna/Umeå/Sundsvall/Gävle/Stockholm/Malmö), null → SE3
+- **CO₂** — faktor per bränsleläge; rutan skapas med rätt enhetsetikett (elmix/förbränning)
+- **Bildataparsning** — märken, tvåordsmärken (Alfa Romeo, Land Rover), (el)-suffix, MG-prefixnormalisering utan dubblering, okända märken/nollvärden hoppas över, statiska värden skrivs inte över; ICE-datans märkesprefix + dieselsuffix
+- **Delbara länkar** — hash → fält → återbyggd URL blir identisk; no-op utan hash
+- **Prishämtning** — hemmaladdningspris = spot × 1,25 + schablon; cache före fetch; fallback vid nätverksfel (el + bensin/diesel)
+- **Jämförelsen** — visar de två andra drivmedlen med rätt kostnad/CO₂ och billigare/dyrare-badge
+- **Lägesbyte** — priset rensas vid el ↔ fossilt men behålls bensin ↔ diesel
+- **Demo-räknaren** — 5 → 0, stannar på 0; `ca_status=active` räknas som inloggad
+- **`bcDoCalculate`** — hela kedjan med returresa: mil, liter, kostnad, CO₂ och dela-knappen
 
 ```bash
 npm test
