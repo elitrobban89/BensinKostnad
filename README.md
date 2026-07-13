@@ -81,11 +81,13 @@ Ett minimalt Node.js/Express-API körs på `https://bilresa.onrender.com`:
 | Endpoint | Beskrivning |
 |----------|-------------|
 | `GET /api/fuel-price` | Returnerar aktuellt bensin95 + dieselpris för Sverige |
-| `GET /health` | Hälsokontroll |
+| `GET /health` | Hälsokontroll — `priceCache: warm/cold` visar om prisskrapningen fungerar |
 
 - Priset hämtas från globalpetrolprices.com (statisk HTML, uppdateras varje måndag)
 - Cachas 12 timmar på servern + 6 timmar i webbläsarens localStorage
+- Priscachen förvärms vid serverstart — första besökaren efter en deploy slipper vänta på skrapningen
 - Faller tillbaka på senast kända priser vid nätverksfel
+- Övervakas med UptimeRobot mot `/health`; nyckelordsövervakning på `warm` kan även larma om skrapningen slutar fungera
 
 Kör lokalt:
 ```bash
@@ -103,11 +105,12 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-10 tester i `server.test.js` med Nodes inbyggda testrunner — inga extra beroenden:
+13 tester i `server.test.js` med Nodes inbyggda testrunner — inga extra beroenden:
 
 - **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
 - **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte, `_source: 'globalpetrolprices-average'` flaggar när reservpriset används (sidlayouten har ändrats)
-- **`/health`** — status OK + CORS-headern
+- **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
+- **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå
 
 ```bash
 npm test

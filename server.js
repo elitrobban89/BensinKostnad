@@ -66,15 +66,33 @@ app.get('/api/fuel-price', async (req, res) => {
   }
 });
 
-app.get('/health', (_, res) => res.json({ status: 'OK' }));
+// priceCache: 'warm'/'cold' — UptimeRobot-nyckelordsövervakning kan larma
+// om skrapningen slutat fungera, inte bara om servern är nere
+app.get('/health', (_, res) => res.json({
+  status: 'OK',
+  priceCache: cache && Date.now() - cacheTs < CACHE_TTL ? 'warm' : 'cold'
+}));
 
 function resetCache() {
   cache   = null;
   cacheTs = 0;
 }
 
-if (require.main === module) {
-  app.listen(PORT, () => console.log(`Bilresa server körs på port ${PORT}`));
+// Förvärm cachen vid start så första anropet efter en deploy/omstart
+// inte behöver vänta på skrapningen
+async function warmUpCache() {
+  try {
+    cache   = await fetchPrices();
+    cacheTs = Date.now();
+    console.log('Priscache förvärmd:', cache);
+  } catch (err) {
+    console.warn('Förvärmning misslyckades, hämtas vid första anropet:', err.message);
+  }
 }
 
-module.exports = { app, fetchPrice, fetchPrices, resetCache, FALLBACK };
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Bilresa server körs på port ${PORT}`));
+  warmUpCache();
+}
+
+module.exports = { app, fetchPrice, fetchPrices, resetCache, warmUpCache, FALLBACK };

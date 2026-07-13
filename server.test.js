@@ -1,7 +1,7 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { app, fetchPrice, resetCache, FALLBACK } = require('./server');
+const { app, fetchPrice, resetCache, warmUpCache, FALLBACK } = require('./server');
 
 // Utdrag ur en riktig GlobalPetrolPrices-sida: första SEK-priset (meta/snitt)
 // får INTE användas — dagspriset är det som följs av "or USD".
@@ -132,6 +132,33 @@ test('misslyckad hämtning cachas inte — nästa anrop försöker igen', async 
 test('/health svarar OK och CORS-headern är satt', async () => {
   const { status, headers, body } = await get('/health');
   assert.equal(status, 200);
-  assert.deepEqual(body, { status: 'OK' });
+  assert.deepEqual(body, { status: 'OK', priceCache: 'cold' });
   assert.equal(headers.get('access-control-allow-origin'), '*');
+});
+
+test('/health rapporterar warm när priscachen är fylld', async () => {
+  priceHandler = () => fakeResponse(PAGE_HTML);
+  await get('/api/fuel-price');
+  const { body } = await get('/health');
+  assert.equal(body.priceCache, 'warm');
+});
+
+// --- warmUpCache: förvärmning vid serverstart ---
+
+test('warmUpCache fyller cachen så första anropet inte hämtar', async () => {
+  let calls = 0;
+  priceHandler = () => { calls++; return fakeResponse(PAGE_HTML); };
+  await warmUpCache();
+  assert.equal(calls, 2); // bensin + diesel
+  const { body } = await get('/api/fuel-price');
+  assert.equal(calls, 2); // ingen ny hämtning — svar ur förvärmd cache
+  assert.equal(body.bensin95, 16.39);
+});
+
+test('warmUpCache sväljer fel — servern startar ändå och nästa anrop hämtar', async () => {
+  priceHandler = () => { throw new Error('nätverksfel'); };
+  await warmUpCache(); // får inte kasta
+  priceHandler = () => fakeResponse(PAGE_HTML);
+  const { body } = await get('/api/fuel-price');
+  assert.equal(body._source, 'globalpetrolprices');
 });
