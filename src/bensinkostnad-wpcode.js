@@ -1883,7 +1883,9 @@ function bcRenderChargeStops(data) {
     box = document.createElement('div');
     box.id = 'bc-chargeStops';
     box.className = 'bc-stops';
-    var anchor = document.getElementById('bc-extras') ||
+    // Direkt under kartan — stoppen hör visuellt ihop med rutten
+    var anchor = document.getElementById('bc-mapCard') ||
+                 document.getElementById('bc-extras') ||
                  document.getElementById('bc-compare') ||
                  document.querySelector('#bc-results .bc-trace');
     if (!anchor) return;
