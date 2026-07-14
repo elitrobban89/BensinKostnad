@@ -527,7 +527,7 @@ test('bcFetchElPrice visar billigaste kommande timmen när den är >10 % billiga
   ctx.bcIsElectric = true;
   ctx.bcFetchElPrice();
   await tick();
-  assert.match(ctx.els['bc-priceHint'].textContent, /billigast kl \d\d:00/);
+  assert.match(ctx.els['bc-priceHint'].textContent, /billigast kl \d\d:\d\d/);
   assert.match(ctx.els['bc-priceHint'].textContent, /0,30 kr\/kWh spot/);
 });
 

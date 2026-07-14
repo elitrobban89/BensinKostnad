@@ -1194,10 +1194,12 @@ function bcFetchElPrice() {
       if (data._source === 'elprisetjustnu') {
         hint.textContent = 'Spotpris ' + data.zone + ' just nu ' + data.spot.toFixed(2).replace('.', ',') +
           ' kr/kWh · uppskattat hemmaladdningspris inkl moms, skatt & nätavgift';
-        // Billigaste kommande timmen — visas bara när den är märkbart billigare (>10 %)
+        // Billigaste kommande priset — visas bara när det är märkbart billigare (>10 %).
+        // Källan har numera 15-minintervall, så minuterna visas också.
         if (data.cheapest && data.cheapest.spot < data.spot * 0.9) {
           var ch = new Date(data.cheapest.start);
-          hint.textContent += ' · 💡 billigast kl ' + ('0' + ch.getHours()).slice(-2) + ':00 (' +
+          hint.textContent += ' · 💡 billigast kl ' + ('0' + ch.getHours()).slice(-2) + ':' +
+            ('0' + ch.getMinutes()).slice(-2) + ' (' +
             data.cheapest.spot.toFixed(2).replace('.', ',') + ' kr/kWh spot)';
         }
         bcSetSourceBadge('el');
