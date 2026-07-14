@@ -17,7 +17,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Milersättning** — resultatet jämför bränslekostnaden med Skatteverkets skattefria schablon (25 kr/mil) och visar marginal eller underskott
 - **Samåkning** — chips 1–5 personer delar kostnaden och visar kr/person; valet följer med i delade länkar (`pers`)
 - **Pendlingsläge** — kryssruta som räknar årskostnad (220 arbetsdagar, tur & retur); följer med i delade länkar (`pendla`)
-- **Laddstopp längs rutten** — i elläget på resor över 25 mil hämtas laddstopp från Elbilsladdning-backendens `/api/route-stations` (generisk elbil, 40 mil räckvidd): bästa station per stopp visas med effekt och ungefärligt pris, plus ⚡-markörer på kartan
+- **Laddstopp längs rutten** — i elläget på resor över 25 mil hämtas laddstopp från Elbilsladdning-backendens `/api/route-stations` (generisk elbil, 40 mil räckvidd): bästa station per stopp visas med effekt och ungefärligt pris i en ruta **direkt under kartan**, plus ⚡-markörer på själva kartan
 - **CO₂ per resa** — resultatgriden får en CO₂-ruta (bensin 2,36 kg/l, diesel 2,68 kg/l vid förbränning; el 0,04 kg/kWh svensk elmix) och jämförelseraderna visar ~CO₂ per alternativ
 - **Delbara länkar** — "🔗 Dela beräkningen" kopierar en URL (mobil: delningsmenyn) med hela beräkningen i hashen (`#bc=start=...&mode=el...`); mottagaren får fälten ifyllda och resultatet uträknat direkt. Hashen når aldrig servern och stör inte WordPress-cachen; adressfältets URL hålls också delbar via `history.replaceState`
 - **GPS-position** — hämtar användarens position, fyller i närmaste gatuadress och triggar automatisk prisuppdatering
@@ -32,7 +32,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **EV-data caching** — CarAdvice API-svar cachas i localStorage med 24 h TTL
 - **Serverdata för bensin/diesel/hybrid** — förbrukningssiffror hämtas från CarAdvice `/api/ice-consumption` (~950 varianter ur `ice_consumption`-tabellen) vid sidladdning, 24 h localStorage-cache; den statiska databasen i JS:en är fallback när API:et inte svarar
 - **Demo-läge** — utloggade användare får 5 gratis sökningar; blockeras därefter med login-CTA
-- **Login-medvetenhet** — WPCode JS läser WordPress `body.logged-in`-klass och injicerar demo-banner + login-CTA dynamiskt
+- **Login-medvetenhet** — kalkylator-JS:et läser WordPress `body.logged-in`-klass och injicerar demo-banner + login-CTA dynamiskt
 - **Promo-kort** — komponent för elbilsladdningssidan med login-medveten visning
 - **Aurora-design** — långsamt driftande lila/indigo-gradient i header med glödande blobbar, hover-lyft på kort, animerad gradient + glow på beräkna-knappen och totalkostnadskortet, entré-animationer för karta/resultat; allt stängs av vid `prefers-reduced-motion`
 - **Responsiv design** — fungerar på mobil och desktop
@@ -65,7 +65,7 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | `src/projekt-kort.html` | Projekt-kort för hemsidan |
 | `src/bilresa-effekter-wpcode.js` / `.html` / `-shortcode.php` | Effekt-snippets för Bilresa-sidan |
 | `src/hemssida-effekter-wpcode.js` | Effekt-snippet för startsidan |
-| `server.js` | Node.js/Express backend — bränsle- och elpris-API |
+| `server.js` | Node.js/Express backend — bränsle- och elpris-API + serverar kalkylatorfrontenden (`/bensinkostnad.js`) |
 | `server.test.js` | Backend-testsvit (22 tester) |
 | `frontend.test.js` | Frontend-testsvit — kör kalkylator-JS:et i DOM-stubbad vm-kontext (30 tester) |
 | `.github/workflows/node.yml` | CI: syntaxkontroll + testsvit på varje push |
@@ -86,7 +86,7 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | [elprisetjustnu.se](https://www.elprisetjustnu.se) | Spotpris el per elområde (öppet API) |
 | Node.js + Express | Bilresa backend (bilresa.onrender.com) |
 | [globalpetrolprices.com](https://www.globalpetrolprices.com) | Bränsleprisdata (scraping, uppdateras varje måndag) |
-| WordPress + WPCode | CMS och JavaScript-injektion |
+| WordPress | CMS — kalkylatorn bor i ett Anpassad HTML-block som laddar JS:et från backenden (WPCode avvecklat 2026-07-14) |
 | Docker + Render.com | Backend-hosting |
 
 ---
@@ -98,7 +98,8 @@ Ett minimalt Node.js/Express-API körs på `https://bilresa.onrender.com`:
 | Endpoint | Beskrivning |
 |----------|-------------|
 | `GET /api/fuel-price` | Returnerar aktuellt bensin95 + dieselpris för Sverige |
-| `GET /api/electricity-price?zone=SE3` | Aktuellt spotpris (SEK/kWh exkl moms) för ett elområde, från elprisetjustnu.se; cachas per zon och timme |
+| `GET /api/electricity-price?zone=SE3` | Aktuellt spotpris (SEK/kWh exkl moms) för ett elområde, från elprisetjustnu.se; cachas per zon och timme. Svaret innehåller även `cheapest` — billigaste kommande priset (inkl. morgondagens fil när den publicerats, 15-minupplösning) |
+| `GET /bensinkostnad.js` | Kalkylatorns frontend (`src/bensinkostnad-wpcode.js`) — 5 min cache; WordPress-sidan laddar den via `<script src>` så en git push deployar även frontenden. Kräver `COPY src ./src` i Dockerfilen |
 | `GET /health` | Hälsokontroll — `priceCache: warm/cold` visar om prisskrapningen fungerar |
 
 - Priset hämtas från globalpetrolprices.com (statisk HTML, uppdateras varje måndag)
