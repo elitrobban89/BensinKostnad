@@ -10,10 +10,14 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 
 - **Stöd för bensin, diesel och el** — väljer rätt enheter och formel automatiskt baserat på fordonstyp
 - **Automatisk bränsleprishämtning** — hämtar aktuellt bensin/dieselpris från [globalpetrolprices.com](https://www.globalpetrolprices.com/Sweden/) via Bilresa-backend; cachas 6 timmar i localStorage
-- **Automatiskt elpris** — spotpriset hämtas från [elprisetjustnu.se](https://www.elprisetjustnu.se) för rätt elområde (SE1–SE4 väljs via GPS-latitud); fältet fylls med ett uppskattat hemmaladdningspris (spot × 1,25 moms + schablon 1,25 kr för energiskatt, nätavgift och påslag), cachas 1 timme
+- **Automatiskt elpris** — spotpriset hämtas från [elprisetjustnu.se](https://www.elprisetjustnu.se) för rätt elområde (SE1–SE4 väljs via GPS-latitud); fältet fylls med ett uppskattat hemmaladdningspris (spot × 1,25 moms + schablon 1,25 kr för energiskatt, nätavgift och påslag), cachas 1 timme. Hinten tipsar om **billigaste kommande laddtimmen** (även över dygnsgränsen när morgondagens priser publicerats) när den är >10 % billigare än nu
 - **Glödande källbadges** — pulserande LIVE-badge under prisfältet visar datakällan (grön för globalpetrolprices, violett för elprisetjustnu, bärnsten för reservpris); respekterar `prefers-reduced-motion`
 - **Laddningsval-chips** — i elläget väljs 🏠 Hemmaladdning (spotbaserat) eller ⚡ Snabbladdare, plus länk till [elbilsladdning-appen](https://elitrobban.se/elbilsladdning/) för operatörspriser. Snabbladdarpriset hämtas från Elbilsladdning-backendens `GET /api/charging-price`: med position (GPS/vald startort) priset hos **närmaste DC-station med känd operatör** — hinten visar operatör och avstånd, badgen säger NÄRMASTE SNABBLADDARE — annars riksgenomsnittet av operatörstabellen. Konstanten `BC_EL_FAST_AVG` (4,75 kr/kWh) är sista reserv vid nätverksfel; 30 min localStorage-cache per position
 - **Bränslejämförelse** — under resultatet visas vad samma resa kostar med de andra drivmedlen (genomsnittsbil: 0,75 l/10km bensin, 0,60 diesel, 1,7 kWh/mil el) med aktuella priser och billigare/dyrare-badge i procent
+- **Milersättning** — resultatet jämför bränslekostnaden med Skatteverkets skattefria schablon (25 kr/mil) och visar marginal eller underskott
+- **Samåkning** — chips 1–5 personer delar kostnaden och visar kr/person; valet följer med i delade länkar (`pers`)
+- **Pendlingsläge** — kryssruta som räknar årskostnad (220 arbetsdagar, tur & retur); följer med i delade länkar (`pendla`)
+- **Laddstopp längs rutten** — i elläget på resor över 25 mil hämtas laddstopp från Elbilsladdning-backendens `/api/route-stations` (generisk elbil, 40 mil räckvidd): bästa station per stopp visas med effekt och ungefärligt pris, plus ⚡-markörer på kartan
 - **CO₂ per resa** — resultatgriden får en CO₂-ruta (bensin 2,36 kg/l, diesel 2,68 kg/l vid förbränning; el 0,04 kg/kWh svensk elmix) och jämförelseraderna visar ~CO₂ per alternativ
 - **Delbara länkar** — "🔗 Dela beräkningen" kopierar en URL (mobil: delningsmenyn) med hela beräkningen i hashen (`#bc=start=...&mode=el...`); mottagaren får fälten ifyllda och resultatet uträknat direkt. Hashen når aldrig servern och stör inte WordPress-cachen; adressfältets URL hålls också delbar via `history.replaceState`
 - **GPS-position** — hämtar användarens position, fyller i närmaste gatuadress och triggar automatisk prisuppdatering
@@ -56,14 +60,14 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | Fil | Beskrivning |
 |-----|-------------|
 | `src/bensinkostnad-wordpress.html` | HTML + CSS för WordPress Anpassad HTML-block (enda HTML-varianten — äldre generationer är borttagna) |
-| `src/bensinkostnad-wpcode.js` | JavaScript för WPCode-plugin (kalkylatorlogik, GPS, karta, bildata, prishämtning, jämförelse, CO₂, delbara länkar) |
+| `src/bensinkostnad-wpcode.js` | Kalkylatorns JavaScript — serveras av backenden som `/bensinkostnad.js` (logik, GPS, karta, bildata, prishämtning, jämförelse, CO₂, delbara länkar, laddstopp, milersättning/samåkning/pendling) |
 | `src/elbilsladdning-promo.html` | Promo-kort för elbilsladdningssidan |
 | `src/projekt-kort.html` | Projekt-kort för hemsidan |
 | `src/bilresa-effekter-wpcode.js` / `.html` / `-shortcode.php` | Effekt-snippets för Bilresa-sidan |
 | `src/hemssida-effekter-wpcode.js` | Effekt-snippet för startsidan |
 | `server.js` | Node.js/Express backend — bränsle- och elpris-API |
-| `server.test.js` | Backend-testsvit (19 tester) |
-| `frontend.test.js` | Frontend-testsvit — kör WPCode-snippetet i DOM-stubbad vm-kontext (18 tester) |
+| `server.test.js` | Backend-testsvit (22 tester) |
+| `frontend.test.js` | Frontend-testsvit — kör kalkylator-JS:et i DOM-stubbad vm-kontext (30 tester) |
 | `.github/workflows/node.yml` | CI: syntaxkontroll + testsvit på varje push |
 | `package.json` | Node.js-beroenden |
 | `Dockerfile` | Docker-konfiguration för Render.com |
@@ -119,23 +123,28 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-37 tester med Nodes inbyggda testrunner — inga extra beroenden.
+52 tester med Nodes inbyggda testrunner — inga extra beroenden.
 
-**Backend (`server.test.js`, 19 st):**
+**Backend (`server.test.js`, 22 st):**
 
 - **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
 - **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte, `_source: 'globalpetrolprices-average'` flaggar när reservpriset används (sidlayouten har ändrats)
-- **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, fallback vid nätverksfel eller när prisraden saknas
+- **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, fallback vid nätverksfel eller när prisraden saknas; **billigaste kommande timmen** hittas över dygnsgränsen (morgondagens fil) och saknad morgondagsfil tolereras
+- **`/bensinkostnad.js`** — kalkylatorfrontenden serveras med JS-content-type och 5 min cache
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå
 
-**Frontend (`frontend.test.js`, 18 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
+**Frontend (`frontend.test.js`, 30 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
 
 - **Elzoner** — latitud → SE1–SE4 (Kiruna/Umeå/Sundsvall/Gävle/Stockholm/Malmö), null → SE3
 - **CO₂** — faktor per bränsleläge; rutan skapas med rätt enhetsetikett (elmix/förbränning)
 - **Bildataparsning** — märken, tvåordsmärken (Alfa Romeo, Land Rover), (el)-suffix, MG-prefixnormalisering utan dubblering, okända märken/nollvärden hoppas över, statiska värden skrivs inte över; ICE-datans märkesprefix + dieselsuffix
-- **Delbara länkar** — hash → fält → återbyggd URL blir identisk; no-op utan hash
+- **Delbara länkar** — hash → fält → återbyggd URL blir identisk; no-op utan hash; personer + pendlingsläge följer med
 - **Prishämtning** — hemmaladdningspris = spot × 1,25 + schablon; cache före fetch; fallback vid nätverksfel (el + bensin/diesel)
+- **Snabbladdarpris** — närmaste station med operatör/avstånd i hinten, riksgenomsnitt utan position, konstant-fallback vid nätverksfel, 30-minuterscache
+- **Billigaste laddtimmen** — visas i hemmaladdnings-hinten när den är >10 % billigare än nu, döljs annars
+- **Extraraderna** — milersättning (25 kr/mil) med marginal/underskott, kr/person-samåkning, pendlingsårskostnad med/utan returresa
+- **Laddstopp** — hämtas och visas med station/effekt/pris; hoppas över för korta resor och fossilläge; döljs när inga stopp behövs
 - **Jämförelsen** — visar de två andra drivmedlen med rätt kostnad/CO₂ och billigare/dyrare-badge
 - **Lägesbyte** — priset rensas vid el ↔ fossilt men behålls bensin ↔ diesel
 - **Demo-räknaren** — 5 → 0, stannar på 0; `ca_status=active` räknas som inloggad
@@ -167,13 +176,10 @@ Total kostnad = kWh åtgång × laddningspris (SEK/kWh)
 
 ## WordPress-installation
 
-### 1. HTML + CSS
-Klistra in innehållet från `bensinkostnad-wordpress.html` i ett **Anpassad HTML**-block på sidan. Inkludera allt fram till och med `<script src=".../leaflet.js"></script>` — men **inte** det egna `<script>`-blocket.
+### 1. HTML + CSS + JavaScript
+Klistra in hela innehållet från `bensinkostnad-wordpress.html` i ett **Anpassad HTML**-block på sidan. Blocket innehåller `<script src="https://bilresa.onrender.com/bensinkostnad.js" defer>` — kalkylatorlogiken serveras av Render-backenden med 5 min cache, så **en git push deployar även frontenden**. Inget WPCode-snippet behövs längre (det gamla JS-snippetet ska vara raderat/inaktiverat).
 
-### 2. JavaScript
-Installera pluginet [WPCode](https://wordpress.org/plugins/insert-headers-and-footers/) och lägg till `bensinkostnad-wpcode.js` som ett JavaScript-snippet som körs på bensinkostnad-sidan.
-
-### 3. Leaflet
+### 2. Leaflet
 Leaflet laddas automatiskt via CDN i HTML-blocket — ingen extra installation krävs.
 
 ---

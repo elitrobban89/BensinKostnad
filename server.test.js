@@ -183,9 +183,64 @@ test('/api/electricity-price cachar per zon och timme', async () => {
   elHandler = () => { calls++; return fakeJsonResponse(elHours(0.52)); };
   await get('/api/electricity-price?zone=SE3');
   await get('/api/electricity-price?zone=SE3');
-  assert.equal(calls, 1); // andra anropet ur cachen
+  assert.equal(calls, 2); // dagens + morgondagens fil; andra anropet ur cachen
   await get('/api/electricity-price?zone=SE4');
-  assert.equal(calls, 2); // annan zon hämtar separat
+  assert.equal(calls, 4); // annan zon hämtar separat
+});
+
+// Timrader med valfria (timoffset, pris)-par relativt aktuell timme
+function elRows(spec) {
+  const hourStart = Math.floor(Date.now() / 3_600_000) * 3_600_000;
+  return spec.map(([offset, price]) => ({
+    SEK_per_kWh: price,
+    time_start: new Date(hourStart + offset * 3_600_000).toISOString(),
+    time_end: new Date(hourStart + (offset + 1) * 3_600_000).toISOString()
+  }));
+}
+
+test('fetchSpotPrice hittar billigaste kommande timmen över dygnsgränsen', async () => {
+  const { fetchSpotPrice } = require('./server');
+  let call = 0;
+  elHandler = () => {
+    call++;
+    return call === 1
+      ? fakeJsonResponse(elRows([[-1, 9.99], [0, 1.00], [1, 0.80], [2, 0.55]]))
+      : fakeJsonResponse(elRows([[26, 0.15]])); // morgondagens natt-timme är billigast
+  };
+  const data = await fetchSpotPrice('SE3');
+  assert.equal(data.spot, 1.00);
+  assert.equal(data.cheapest.spot, 0.15);
+});
+
+test('fetchSpotPrice klarar att morgondagens fil saknas', async () => {
+  const { fetchSpotPrice } = require('./server');
+  let call = 0;
+  elHandler = () => {
+    call++;
+    return call === 1
+      ? fakeJsonResponse(elRows([[0, 0.52], [1, 0.44]]))
+      : fakeJsonResponse({ error: 'not found' }, 404);
+  };
+  const data = await fetchSpotPrice('SE3');
+  assert.equal(data.spot, 0.52);
+  assert.equal(data.cheapest.spot, 0.44); // dagens återstående timmar räcker
+});
+
+// --- /bensinkostnad.js: Render-serverad kalkylator-frontend ---
+
+test('/bensinkostnad.js serveras med JS-content-type och kort cache', async () => {
+  const server = app.listen(0);
+  try {
+    const port = server.address().port;
+    const res = await realFetch(`http://127.0.0.1:${port}/bensinkostnad.js`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /javascript/);
+    assert.match(res.headers.get('cache-control'), /max-age=300/);
+    const text = await res.text();
+    assert.ok(text.includes('bcFetchFastPrice'), 'innehåller kalkylatorkoden');
+  } finally {
+    server.close();
+  }
 });
 
 test('/api/electricity-price faller tillbaka på fast pris när källan fallerar', async () => {

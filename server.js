@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -6,6 +7,17 @@ const PORT = process.env.PORT || 3000;
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   next();
+});
+
+// ── Kalkylatorns frontend ──────────────────────────────────────────
+// Serveras härifrån så att en git push deployar även JS:et — WordPress-
+// sidan laddar <script src="https://bilresa.onrender.com/bensinkostnad.js">
+// i stället för ett inklistrat WPCode-snippet. Kort cache: utrullning
+// inom 5 min utan att varje sidvisning belastar servern.
+app.get('/bensinkostnad.js', (_, res) => {
+  res.type('application/javascript; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=300');
+  res.sendFile(path.join(__dirname, 'src', 'bensinkostnad-wpcode.js'));
 });
 
 // Cache 12 timmar – GlobalPetrolPrices uppdaterar varje måndag
@@ -79,15 +91,34 @@ function elPriceUrl(zone, now) {
   return `https://www.elprisetjustnu.se/api/v1/prices/${y}/${m}-${d}_${zone}.json`;
 }
 
-async function fetchSpotPrice(zone, now = new Date()) {
-  const res = await fetch(elPriceUrl(zone, now), { headers: HEADERS, signal: AbortSignal.timeout(12_000) });
+async function fetchDayHours(zone, date) {
+  const res = await fetch(elPriceUrl(zone, date), { headers: HEADERS, signal: AbortSignal.timeout(12_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const hours = await res.json();
+  return res.json();
+}
+
+async function fetchSpotPrice(zone, now = new Date()) {
+  const hours = await fetchDayHours(zone, now);
   const t = now.getTime();
   const cur = hours.find(h =>
     new Date(h.time_start).getTime() <= t && t < new Date(h.time_end).getTime());
   if (!cur) throw new Error('Ingen prisrad för aktuell timme');
-  return { zone, spot: cur.SEK_per_kWh, updated: cur.time_start, _source: 'elprisetjustnu' };
+
+  // Billigaste kommande timmen — morgondagens fil publiceras ~13:00,
+  // saknas den räcker dagens återstående timmar
+  let all = hours;
+  try {
+    all = hours.concat(await fetchDayHours(zone, new Date(t + 24 * 3_600_000)));
+  } catch (e) {}
+  let cheapest = null;
+  for (const h of all) {
+    if (new Date(h.time_start).getTime() <= t) continue;
+    if (!cheapest || h.SEK_per_kWh < cheapest.SEK_per_kWh) cheapest = h;
+  }
+
+  const out = { zone, spot: cur.SEK_per_kWh, updated: cur.time_start, _source: 'elprisetjustnu' };
+  if (cheapest) out.cheapest = { start: cheapest.time_start, spot: cheapest.SEK_per_kWh };
+  return out;
 }
 
 app.get('/api/electricity-price', async (req, res) => {

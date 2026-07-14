@@ -417,6 +417,133 @@ test('bcFetchFastPrice använder 30-minuterscachen utan nytt anrop', async () =>
   assert.equal(ctx.els['bc-price'].value, '4.50');
 });
 
+// ── Extrarader: milersättning, samåkning, pendling ───────────────
+
+// sv-SE-tusentalsavgränsare är smalt hårt mellanslag (U+202F) — normalisera
+const normSp = s => s.replace(/[   ]/g, ' ');
+
+test('bcRenderExtras räknar milersättning och markerar marginal/underskott', () => {
+  const ctx = createEnv();
+  ctx.bcRenderExtras(61.2, 500); // ersättning 61,2 × 25 = 1 530 kr > 500 kr
+  assert.match(normSp(ctx.els['bc-milersRow'].innerHTML), /1 530 kr/);
+  assert.match(normSp(ctx.els['bc-milersRow'].innerHTML), /1 030 kr marginal/);
+  ctx.bcRenderExtras(10, 500); // ersättning 250 kr < 500 kr
+  assert.match(normSp(ctx.els['bc-milersRow'].innerHTML), /250 kr saknas/);
+});
+
+test('samåkningschips ger kr/person och pendling ger årskostnad', () => {
+  const ctx = createEnv();
+  ctx.bcRenderExtras(30, 500);
+  assert.equal(ctx.els['bc-perPerson'].innerHTML, ''); // 1 person → ingen rad
+  ctx.bcPersons = 4;
+  ctx.bcUpdateExtras();
+  assert.match(ctx.els['bc-perPerson'].innerHTML, /125,00 kr\/person/);
+  assert.ok(ctx.els['bc-pers4'].classList.contains('active'));
+  // pendling utan retur-kryss: dagskostnad dubblas → 500 × 2 × 220 = 220 000
+  ctx.bcCommute = true;
+  ctx.bcUpdateExtras();
+  assert.match(normSp(ctx.els['bc-annualCost'].innerHTML), /220 000 kr\/år/);
+  // med retur-kryss är kostnaden redan tur & retur → 500 × 220 = 110 000
+  ctx.els['bc-returresa'].checked = true;
+  ctx.bcUpdateExtras();
+  assert.match(normSp(ctx.els['bc-annualCost'].innerHTML), /110 000 kr\/år/);
+});
+
+test('delad länk bär med sig personer och pendlingsläge', () => {
+  const ctx = createEnv({
+    location: {
+      origin: 'https://elitrobban.se', pathname: '/branslekostnad-berakning/', search: '',
+      hash: '#bc=mil=30&mode=bensin&cons=0.85&pris=14.87&pers=3&pendla=1'
+    },
+    fetchHandler: () => jsonResponse({ bensin95: 14.87, diesel: 16.87 })
+  });
+  assert.equal(ctx.bcApplySharedLink(), true);
+  assert.equal(ctx.bcPersons, 3);
+  assert.equal(ctx.bcCommute, true);
+  assert.match(ctx.bcBuildShareUrl(), /pers=3/);
+  assert.match(ctx.bcBuildShareUrl(), /pendla=1/);
+});
+
+// ── Laddstopp längs rutten ───────────────────────────────────────
+
+const STOPS_DATA = {
+  totalDistanceKm: 398.0, stopsNeeded: 1, carName: 'Generisk elbil',
+  stops: [{ order: 1, distanceFromStartKm: 199.0, station: {
+    name: 'Ionity Mariestad', address: 'E20', distanceKm: 1.2, lat: 58.7, lon: 13.8,
+    maxEffKw: 350, stationKw: 350, connectorType: 'CCS Combo 2 (DC)', operator: 'Ionity',
+    usageCost: null, chargepricePerKwh: '~6,96 kr/kWh', connectorCount: 6, ocmId: '99'
+  }}]
+};
+
+test('bcFetchChargeStops hämtar och visar stopp med station, effekt och pris', async () => {
+  const ctx = createEnv({ fetchHandler: () => jsonResponse(STOPS_DATA) });
+  ctx.bcIsElectric = true;
+  ctx.els['bc-dest'].value = 'Stockholm';
+  ctx.els['bc-km'].value = '40'; // 400 km — över tröskeln
+  ctx.bcRouteStartLat = 57.71; ctx.bcRouteStartLon = 11.97;
+  ctx.bcRouteEndLat = 59.33;   ctx.bcRouteEndLon = 18.07;
+  ctx.bcFetchChargeStops();
+  await tick();
+  assert.ok(ctx.fetchLog[0].includes('/api/route-stations?startLat=57.71'));
+  assert.ok(ctx.fetchLog[0].includes('rangeKm=400'));
+  const html = ctx.els['bc-chargeStops'].innerHTML;
+  assert.match(html, /Ionity Mariestad/);
+  assert.match(html, /199 km från start/);
+  assert.match(html, /350 kW/);
+  assert.match(html, /~6,96 kr\/kWh/);
+});
+
+test('bcFetchChargeStops hoppar över korta resor och fossilläge', () => {
+  const ctx = createEnv({ fetchHandler: () => jsonResponse(STOPS_DATA) });
+  ctx.els['bc-dest'].value = 'Stockholm';
+  ctx.els['bc-km'].value = '40';
+  ctx.bcRouteStartLat = 57.71; ctx.bcRouteStartLon = 11.97;
+  ctx.bcRouteEndLat = 59.33;   ctx.bcRouteEndLon = 18.07;
+  ctx.bcIsElectric = false; // fossilläge — inga stopp
+  ctx.bcFetchChargeStops();
+  assert.equal(ctx.fetchLog.length, 0);
+  ctx.bcIsElectric = true;
+  ctx.els['bc-km'].value = '20'; // 200 km — under tröskeln
+  ctx.bcFetchChargeStops();
+  assert.equal(ctx.fetchLog.length, 0);
+});
+
+test('bcRenderChargeStops döljer rutan när inga stopp behövs', () => {
+  const ctx = createEnv();
+  ctx.bcRenderChargeStops(STOPS_DATA); // skapa rutan först
+  ctx.bcRenderChargeStops({ totalDistanceKm: 100, stopsNeeded: 0, stops: [] });
+  assert.equal(ctx.els['bc-chargeStops'].style.display, 'none');
+});
+
+// ── Billigaste laddtimmen i hemmaladdnings-hinten ────────────────
+
+test('bcFetchElPrice visar billigaste kommande timmen när den är >10 % billigare', async () => {
+  const ctx = createEnv({
+    fetchHandler: () => jsonResponse({
+      zone: 'SE3', spot: 1.00, _source: 'elprisetjustnu',
+      cheapest: { start: new Date().toISOString(), spot: 0.30 }
+    })
+  });
+  ctx.bcIsElectric = true;
+  ctx.bcFetchElPrice();
+  await tick();
+  assert.match(ctx.els['bc-priceHint'].textContent, /billigast kl \d\d:00/);
+  assert.match(ctx.els['bc-priceHint'].textContent, /0,30 kr\/kWh spot/);
+});
+
+test('bcFetchElPrice visar ingen billigast-tips när skillnaden är liten', async () => {
+  const ctx = createEnv({
+    fetchHandler: () => jsonResponse({
+      zone: 'SE3', spot: 1.00, _source: 'elprisetjustnu',
+      cheapest: { start: new Date().toISOString(), spot: 0.95 }
+    })
+  });
+  ctx.bcIsElectric = true;
+  ctx.bcFetchElPrice();
+  await tick();
+  assert.doesNotMatch(ctx.els['bc-priceHint'].textContent, /billigast kl/);
+});
+
 // ── bcDoCalculate: hela beräkningskedjan ─────────────────────────
 
 test('bcDoCalculate räknar kostnad, CO₂ och returresa rätt', async () => {

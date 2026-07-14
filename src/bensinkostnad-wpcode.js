@@ -6,6 +6,10 @@
 // ── Global state ─────────────────────────────────────
 var bcStartLat = null, bcStartLon = null, bcMap = null, bcRouteLayer = null;
 var bcIsElectric = false, bcIsDiesel = false;
+// Senast beräknade ruttens ändpunkter — laddstoppen behöver båda koordinatparen
+// (bcStartLat är null när starten geokodats från text i stället för GPS)
+var bcRouteStartLat = null, bcRouteStartLon = null, bcRouteEndLat = null, bcRouteEndLon = null;
+var bcStopMarkers = [];
 
 // ── Bildata: l/10km för bensin/diesel, kWh/mil för elbilar (el) ──
 // Förbrukning kompletteras automatiskt från CarAdvice vid laddning:
@@ -1190,6 +1194,12 @@ function bcFetchElPrice() {
       if (data._source === 'elprisetjustnu') {
         hint.textContent = 'Spotpris ' + data.zone + ' just nu ' + data.spot.toFixed(2).replace('.', ',') +
           ' kr/kWh · uppskattat hemmaladdningspris inkl moms, skatt & nätavgift';
+        // Billigaste kommande timmen — visas bara när den är märkbart billigare (>10 %)
+        if (data.cheapest && data.cheapest.spot < data.spot * 0.9) {
+          var ch = new Date(data.cheapest.start);
+          hint.textContent += ' · 💡 billigast kl ' + ('0' + ch.getHours()).slice(-2) + ':00 (' +
+            data.cheapest.spot.toFixed(2).replace('.', ',') + ' kr/kWh spot)';
+        }
         bcSetSourceBadge('el');
       } else {
         hint.textContent = 'Ungefärligt hemmaladdningspris · kan variera med avtal och elområde';
@@ -1372,6 +1382,7 @@ function bcAutoRoute() {
   if (!destVal || (!startVal && bcStartLat === null)) return;
 
   bcSetCalcStatus('🗺 Beräknar rutt...');
+  bcRouteEndLat = null; // ny rutt på gång — gamla laddstopp får inte hänga kvar
 
   var startPromise = (bcStartLat !== null)
     ? Promise.resolve({ lat: bcStartLat, lon: bcStartLon })
@@ -1383,6 +1394,8 @@ function bcAutoRoute() {
         .then(function(end) {
           return bcFetchRoute(start.lon, start.lat, end.lon, end.lat)
             .then(function(route) {
+              bcRouteStartLat = start.lat; bcRouteStartLon = start.lon;
+              bcRouteEndLat   = end.lat;   bcRouteEndLon   = end.lon;
               var kmEl = document.getElementById('bc-km');
               if (kmEl) kmEl.value = parseFloat((route.distanceKm / 10).toFixed(1));
               bcShowMapRoute(
@@ -1569,6 +1582,7 @@ function bcCalculate() {
   if (dest && (bcStartLat !== null || startVal)) {
     if (btn) { btn.disabled = true; btn.textContent = 'Beräknar rutt...'; }
     bcSetCalcStatus('🔍 Söker adresser...');
+    bcRouteEndLat = null; // ny rutt på gång — gamla laddstopp får inte hänga kvar
 
     var startPromise2 = (bcStartLat !== null)
       ? Promise.resolve({ lat: bcStartLat, lon: bcStartLon })
@@ -1581,6 +1595,8 @@ function bcCalculate() {
           .then(function(end) {
             return bcFetchRoute(start.lon, start.lat, end.lon, end.lat)
               .then(function(route) {
+                bcRouteStartLat = start.lat; bcRouteStartLon = start.lon;
+                bcRouteEndLat   = end.lat;   bcRouteEndLon   = end.lon;
                 document.getElementById('bc-km').value = parseFloat((route.distanceKm / 10).toFixed(1));
                 bcShowMapRoute(start.lat, start.lon, end.lat, end.lon, route.coordinates,
                   startVal || 'Start', dest);
@@ -1633,6 +1649,8 @@ function bcDoCalculate(cons, pris) {
   bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
   bcRenderCo2(amount * bcCo2Factor());
   bcRenderComparison(mil, kostnad);
+  bcRenderExtras(mil, kostnad);
+  bcFetchChargeStops();
   bcRenderShareButton();
   // Håll adressfältets URL delbar — bokmärke/kopiera fungerar direkt
   try { history.replaceState(null, '', bcBuildShareUrl()); } catch(e) {}
@@ -1688,6 +1706,7 @@ function bcRefreshCalc() {
   bcTrace('bc-t4', 'Kostnad per mil:', bcFmt(kostnad / mil, 2) + ' SEK/mil');
   bcRenderCo2(amount * bcCo2Factor());
   bcRenderComparison(mil, kostnad);
+  bcRenderExtras(mil, kostnad);
 }
 
 // ── CO₂-utsläpp per resa ─────────────────────────────────────────
@@ -1718,6 +1737,189 @@ function bcRenderCo2(co2kg) {
   bcCountUp('bc-rCo2', co2kg, co2kg < 10 ? 2 : 1);
 }
 
+// ── Extrarader: milersättning, samåkning och pendlingskalkyl ─────
+var BC_MILERSATTNING = 25;  // kr/mil — Skatteverkets skattefria schablon för egen bil
+var BC_WORKDAYS = 220;      // arbetsdagar/år i pendlingskalkylen
+var bcPersons = 1, bcCommute = false, bcLastMil = 0, bcLastCost = 0;
+
+function bcInjectExtrasStyles() {
+  if (document.getElementById('bc-extras-styles')) return;
+  var s = document.createElement('style');
+  s.id = 'bc-extras-styles';
+  s.textContent =
+    '.bc-extras{margin-top:14px;padding:12px 16px;background:rgba(99,102,241,.06);' +
+      'border:1px solid rgba(99,102,241,.18);border-radius:12px;font-size:.88rem;line-height:1.7}' +
+    '.bc-extra-row{padding:3px 0}' +
+    '.bc-extra-good{color:#059669;font-weight:600}' +
+    '.bc-extra-bad{color:#d97706;font-weight:600}' +
+    '.bc-pers-chip{display:inline-block;min-width:30px;padding:3px 8px;margin:0 3px;border-radius:8px;' +
+      'border:1px solid rgba(99,102,241,.35);background:transparent;cursor:pointer;font:inherit}' +
+    '.bc-pers-chip.active{background:#6366f1;color:#fff;border-color:#6366f1;font-weight:700}' +
+    '.bc-stops{margin-top:14px;padding:12px 16px;background:rgba(245,158,11,.07);' +
+      'border:1px solid rgba(245,158,11,.25);border-radius:12px;font-size:.88rem;line-height:1.7}' +
+    '.bc-stops-title{font-weight:700;margin-bottom:4px}' +
+    '.bc-stops-note{margin-top:6px;font-size:.76rem;opacity:.65}';
+  document.head.appendChild(s);
+}
+
+function bcEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function bcRenderExtras(mil, kostnad) {
+  bcInjectExtrasStyles();
+  bcLastMil = mil;
+  bcLastCost = kostnad;
+  var anchor = document.getElementById('bc-compare') || document.querySelector('#bc-results .bc-trace');
+  if (!anchor) return;
+  var box = document.getElementById('bc-extras');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'bc-extras';
+    box.className = 'bc-extras';
+    box.innerHTML =
+      '<div class="bc-extra-row" id="bc-milersRow"></div>' +
+      '<div class="bc-extra-row">👥 Dela kostnaden: <span id="bc-persChips"></span> <span id="bc-perPerson"></span></div>' +
+      '<div class="bc-extra-row"><label style="cursor:pointer"><input type="checkbox" id="bc-commuteChk"> ' +
+        '🔁 Pendlingsresa — visa årskostnad</label> <span id="bc-annualCost"></span></div>';
+    anchor.insertAdjacentElement('afterend', box);
+    var chips = document.getElementById('bc-persChips');
+    for (var i = 1; i <= 5; i++) {
+      (function(n) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'bc-pers-chip';
+        b.id = 'bc-pers' + n;
+        b.textContent = n;
+        b.addEventListener('click', function() { bcPersons = n; bcUpdateExtras(); });
+        chips.appendChild(b);
+      })(i);
+    }
+    document.getElementById('bc-commuteChk').addEventListener('change', function() {
+      bcCommute = !!this.checked;
+      bcUpdateExtras();
+    });
+  }
+  // Synka state (t.ex. från delad länk) till kontrollerna
+  var chk = document.getElementById('bc-commuteChk');
+  if (chk) chk.checked = bcCommute;
+  bcUpdateExtras();
+}
+
+function bcUpdateExtras() {
+  var milers = document.getElementById('bc-milersRow');
+  if (milers) {
+    var ers  = bcLastMil * BC_MILERSATTNING;
+    var diff = ers - bcLastCost;
+    milers.innerHTML = '🧾 Skatteverkets milersättning (' + BC_MILERSATTNING + ' kr/mil skattefritt): <strong>' +
+      bcFmt(ers, 0) + ' kr</strong> — ' +
+      (diff >= 0
+        ? '<span class="bc-extra-good">täcker bränslekostnaden med ' + bcFmt(diff, 0) + ' kr marginal</span>'
+        : '<span class="bc-extra-bad">täcker inte bränslekostnaden, ' + bcFmt(-diff, 0) + ' kr saknas</span>');
+  }
+  for (var i = 1; i <= 5; i++) {
+    var c = document.getElementById('bc-pers' + i);
+    if (c) c.classList.toggle('active', i === bcPersons);
+  }
+  var pp = document.getElementById('bc-perPerson');
+  if (pp) pp.innerHTML = bcPersons > 1
+    ? '→ <strong>' + bcFmt(bcLastCost / bcPersons, 2) + ' kr/person</strong>'
+    : '';
+  var annual = document.getElementById('bc-annualCost');
+  if (annual) {
+    if (bcCommute) {
+      var retur = document.getElementById('bc-returresa');
+      // Utan retur-kryss antas pendlaren ändå köra hem — dubbla dagskostnaden
+      var dagskostnad = (retur && retur.checked) ? bcLastCost : bcLastCost * 2;
+      annual.innerHTML = '→ <strong>' + bcFmt(dagskostnad * BC_WORKDAYS, 0) + ' kr/år</strong> (' +
+        BC_WORKDAYS + ' dagar tur & retur)';
+    } else {
+      annual.innerHTML = '';
+    }
+  }
+}
+
+// ── Laddstopp längs rutten (elläge) ──────────────────────────────
+// Elbilsladdning-backendens ruttplanering: generisk elbil med 40 mil räckvidd
+// (75 % utnyttjas per etapp), bästa station per stopp från Open Charge Map.
+var BC_ROUTE_API = 'https://elbilsladdning.onrender.com/api/route-stations';
+var BC_STOPS_RANGE_KM = 400;
+var bcStopsCache = {}; // per rutt i minnet — varje anrop kostar OCM-sökningar
+
+function bcFetchChargeStops() {
+  var box = document.getElementById('bc-chargeStops');
+  var destEl = document.getElementById('bc-dest');
+  var milOneWay = parseFloat(document.getElementById('bc-km') ? document.getElementById('bc-km').value : '');
+  // Bara elläge + känd rutt + resa lång nog att ens kunna kräva stopp (hopp = 300 km)
+  if (!bcIsElectric || bcRouteStartLat === null || bcRouteEndLat === null ||
+      !destEl || !destEl.value.trim() || isNaN(milOneWay) || milOneWay * 10 < 250) {
+    if (box) box.style.display = 'none';
+    return;
+  }
+  var key = [bcRouteStartLat.toFixed(2), bcRouteStartLon.toFixed(2),
+             bcRouteEndLat.toFixed(2), bcRouteEndLon.toFixed(2)].join('_');
+  if (bcStopsCache[key]) { bcRenderChargeStops(bcStopsCache[key]); return; }
+  fetch(BC_ROUTE_API + '?startLat=' + bcRouteStartLat + '&startLon=' + bcRouteStartLon +
+        '&endLat=' + bcRouteEndLat + '&endLon=' + bcRouteEndLon + '&rangeKm=' + BC_STOPS_RANGE_KM)
+    .then(function(r) {
+      if (!r.ok) throw new Error('no data');
+      return r.json();
+    })
+    .then(function(data) {
+      bcStopsCache[key] = data;
+      bcRenderChargeStops(data);
+    })
+    .catch(function() { if (box) box.style.display = 'none'; });
+}
+
+function bcRenderChargeStops(data) {
+  bcInjectExtrasStyles();
+  var results = document.getElementById('bc-results');
+  if (!results) return;
+  var box = document.getElementById('bc-chargeStops');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'bc-chargeStops';
+    box.className = 'bc-stops';
+    var anchor = document.getElementById('bc-extras') ||
+                 document.getElementById('bc-compare') ||
+                 document.querySelector('#bc-results .bc-trace');
+    if (!anchor) return;
+    anchor.insertAdjacentElement('afterend', box);
+  }
+  if (!data || !data.stopsNeeded || !data.stops || !data.stops.length) {
+    box.style.display = 'none';
+    return;
+  }
+  var html = '<div class="bc-stops-title">🔌 Laddstopp längs rutten</div>';
+  data.stops.forEach(function(s) {
+    if (!s.station) return;
+    var st = s.station;
+    html += '<div>Stopp ' + s.order + ' · ' + Math.round(s.distanceFromStartKm) + ' km från start · <strong>' +
+      bcEsc(st.name) + '</strong> · ' + Math.round(st.maxEffKw) + ' kW' +
+      (st.chargepricePerKwh ? ' · ' + bcEsc(st.chargepricePerKwh) : '') + '</div>';
+  });
+  html += '<div class="bc-stops-note">Beräknat på 40 mil räckvidd · stationer från Open Charge Map · priser ungefärliga — verifiera i operatörens app</div>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+  // ⚡-markörer på kartan för varje stopp
+  if (bcMap && typeof L !== 'undefined') {
+    bcStopMarkers.forEach(function(m) { bcMap.removeLayer(m); });
+    bcStopMarkers = [];
+    data.stops.forEach(function(s) {
+      if (!s.station) return;
+      var icon = L.divIcon({ className: '', html:
+        '<div style="background:#f59e0b;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;' +
+        'align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">⚡</div>',
+        iconSize: [26, 26], iconAnchor: [13, 13] });
+      var m = L.marker([s.station.lat, s.station.lon], { icon: icon }).addTo(bcMap)
+        .bindPopup('<b>' + bcEsc(s.station.name) + '</b><br>' + Math.round(s.station.maxEffKw) + ' kW' +
+          (s.station.chargepricePerKwh ? ' · ' + bcEsc(s.station.chargepricePerKwh) : ''));
+      bcStopMarkers.push(m);
+    });
+  }
+}
+
 // ── Delbara länkar: beräkningen kodas i URL-hashen (#bc=...) ─────
 // Hashen skickas aldrig till servern och stör därmed inte WordPress-cachen.
 var bcSharedApplying = false; // stoppar auto-prishämtningar från att skriva över delade värden
@@ -1736,6 +1938,8 @@ function bcBuildShareUrl() {
   add('pris', 'bc-price');
   var retur = document.getElementById('bc-returresa');
   if (retur && retur.checked) p.set('retur', '1');
+  if (bcPersons > 1) p.set('pers', String(bcPersons));
+  if (bcCommute) p.set('pendla', '1');
   return location.origin + location.pathname + location.search + '#bc=' + p.toString();
 }
 
@@ -1754,6 +1958,9 @@ function bcApplySharedLink() {
   setVal('bc-price', p.get('pris'));
   var retur = document.getElementById('bc-returresa');
   if (retur) retur.checked = p.get('retur') === '1';
+  var pers = parseInt(p.get('pers'), 10);
+  bcPersons = (pers >= 1 && pers <= 5) ? pers : 1;
+  bcCommute = p.get('pendla') === '1';
   // Kör beräkningen så den delade länken visar resultatet direkt.
   // Flaggan släpps först här så modbytets schemalagda prishämtning hunnit no-op:a.
   setTimeout(function() { bcSharedApplying = false; bcCalculate(); }, 300);
