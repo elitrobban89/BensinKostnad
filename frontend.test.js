@@ -360,6 +360,63 @@ test('inloggad via ca_status räknas som inloggad', () => {
   assert.equal(ctx.bcIsLoggedIn(), true);
 });
 
+// ── Snabbladdarpris från Elbilsladdning-backenden ────────────────
+
+test('bcFetchFastPrice visar närmaste station med operatör och avstånd i hinten', async () => {
+  const ctx = createEnv({
+    fetchHandler: () => jsonResponse({
+      source: 'nearest-station', priceKr: 5.99, priceLabel: '~5,99 kr/kWh',
+      station: 'Circle K Halmstad', operator: 'Circle K', distanceKm: 2.3,
+      maxKw: 150, avgNationalKr: 4.72
+    })
+  });
+  ctx.bcIsElectric = true;
+  ctx.bcStartLat = 56.67; ctx.bcStartLon = 12.86;
+  ctx.bcFetchFastPrice();
+  await tick();
+  assert.ok(ctx.fetchLog[0].includes('/api/charging-price?lat=56.67&lon=12.86'));
+  assert.equal(ctx.els['bc-price'].value, '5.99');
+  assert.match(ctx.els['bc-priceHint'].textContent, /närmaste snabbladdare/i);
+  assert.match(ctx.els['bc-priceHint'].textContent, /Circle K/);
+  assert.match(ctx.els['bc-priceHint'].textContent, /2,3 km/);
+  assert.match(ctx.els['bc-srcBadge'].innerHTML, /NÄRMASTE SNABBLADDARE/);
+  assert.match(ctx.els['bc-chipFast'].textContent, /5,99 kr\/kWh/);
+});
+
+test('bcFetchFastPrice utan position hämtar riksgenomsnittet', async () => {
+  const ctx = createEnv({
+    fetchHandler: () => jsonResponse({ source: 'national-average', priceKr: 4.72, avgNationalKr: 4.72 })
+  });
+  ctx.bcIsElectric = true;
+  ctx.bcFetchFastPrice();
+  await tick();
+  assert.ok(!ctx.fetchLog[0].includes('lat='));
+  assert.equal(ctx.els['bc-price'].value, '4.72');
+  assert.match(ctx.els['bc-priceHint'].textContent, /Riksgenomsnitt/);
+  assert.match(ctx.els['bc-srcBadge'].innerHTML, /SNITTPRIS/);
+});
+
+test('bcFetchFastPrice faller tillbaka på konstanten vid nätverksfel', async () => {
+  const ctx = createEnv({ fetchHandler: () => Promise.reject(new Error('nere')) });
+  ctx.bcIsElectric = true;
+  ctx.bcFetchFastPrice();
+  await tick();
+  assert.equal(ctx.els['bc-price'].value, '4.75'); // BC_EL_FAST_AVG
+  assert.match(ctx.els['bc-priceHint'].textContent, /4–7 kr\/kWh/);
+});
+
+test('bcFetchFastPrice använder 30-minuterscachen utan nytt anrop', async () => {
+  const ctx = createEnv({ fetchHandler: () => Promise.reject(new Error('ska inte anropas')) });
+  ctx.bcIsElectric = true;
+  ctx.store['bc_fast_cache_riks'] = JSON.stringify({
+    ts: Date.now(), data: { source: 'national-average', priceKr: 4.5 }
+  });
+  ctx.bcFetchFastPrice();
+  await tick();
+  assert.equal(ctx.fetchLog.length, 0);
+  assert.equal(ctx.els['bc-price'].value, '4.50');
+});
+
 // ── bcDoCalculate: hela beräkningskedjan ─────────────────────────
 
 test('bcDoCalculate räknar kostnad, CO₂ och returresa rätt', async () => {

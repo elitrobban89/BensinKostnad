@@ -928,7 +928,8 @@ function bcInjectEffectStyles() {
 }
 
 // kind: 'fuel' (grön, globalpetrolprices) · 'el' (violett, elprisetjustnu)
-//     · 'fast' (bärnsten, snittpris snabbladdare) · 'fallback' (bärnsten)
+//     · 'fast' (bärnsten, snittpris snabbladdare)
+//     · 'faststation' (bärnsten, närmaste snabbladdare) · 'fallback' (bärnsten)
 function bcSetSourceBadge(kind) {
   bcInjectEffectStyles();
   var hint = document.getElementById('bc-priceHint');
@@ -948,6 +949,9 @@ function bcSetSourceBadge(kind) {
   } else if (kind === 'fast') {
     badge.className = 'bc-src-badge fallback';
     badge.innerHTML = '<span class="bc-src-dot"></span>SNITTPRIS · snabbladdare';
+  } else if (kind === 'faststation') {
+    badge.className = 'bc-src-badge fallback';
+    badge.innerHTML = '<span class="bc-src-dot"></span>NÄRMASTE SNABBLADDARE';
   } else {
     badge.className = 'bc-src-badge fallback';
     badge.innerHTML = '<span class="bc-src-dot"></span>RESERVPRIS · kan avvika';
@@ -1037,9 +1041,16 @@ var BC_EL_CACHE_TTL = 60 * 60 * 1000; // 1 timme — spotpriset ändras varje ti
 var BC_EL_SURCHARGE = 1.25;
 var BC_EL_FALLBACK_TOTAL = 2.00; // används när backend inte svarar alls
 
-// Genomsnittligt snabbladdarpris (SEK/kWh inkl moms) — inget öppet API finns,
-// operatörerna tar ca 4–7 kr/kWh; uppdateras manuellt vid behov
+// Genomsnittligt snabbladdarpris (SEK/kWh inkl moms) — sista reserv när
+// Elbilsladdning-backendens /api/charging-price inte svarar; operatörerna
+// tar ca 4–7 kr/kWh
 var BC_EL_FAST_AVG = 4.75;
+
+// Snabbladdarpris från Elbilsladdning-backenden: närmaste DC-station med känd
+// operatör (kräver position), annars riksgenomsnitt av operatörstabellen
+var BC_FAST_API = 'https://elbilsladdning.onrender.com/api/charging-price';
+var BC_FAST_CACHE_KEY = 'bc_fast_cache';
+var BC_FAST_CACHE_TTL = 30 * 60 * 1000; // 30 min — operatörstabellen ändras sällan
 
 // Grov latitudmappning till elområde — gränserna går vid ungefär
 // Umeå (SE1/SE2), Gävle (SE2/SE3) och norra Skåne/Kalmar (SE3/SE4)
@@ -1083,18 +1094,69 @@ function bcRenderChargeChips(activeKind) {
 function bcSelectChargeMode(kind) {
   if (!bcIsElectric) return;
   if (kind === 'fast') {
-    var priceEl = document.getElementById('bc-price');
-    if (priceEl) { priceEl.value = BC_EL_FAST_AVG.toFixed(2); bcFlashPrice(priceEl); }
-    var hint = document.getElementById('bc-priceHint');
-    if (hint) {
-      hint.textContent = 'Genomsnittligt snabbladdarpris · operatörerna tar ca 4–7 kr/kWh';
-      hint.className = 'bc-hint';
-    }
-    bcSetSourceBadge('fast');
-    bcRenderChargeChips('fast');
+    bcFetchFastPrice(); // närmaste station / riksgenomsnitt, konstant som reserv
   } else {
     bcFetchElPrice(); // hämtar spotpriset och markerar hemma-chippen
   }
+}
+
+// Sätter pris, hint och badge utifrån /api/charging-price-svaret.
+// data = null → backend svarade inte → konstanten BC_EL_FAST_AVG.
+function bcApplyFastPrice(data) {
+  var kr = (data && typeof data.priceKr === 'number' && data.priceKr > 0)
+    ? data.priceKr : BC_EL_FAST_AVG;
+  var priceEl = document.getElementById('bc-price');
+  if (priceEl) { priceEl.value = kr.toFixed(2); bcFlashPrice(priceEl); }
+  var hint = document.getElementById('bc-priceHint');
+  if (hint) {
+    if (data && data.source === 'nearest-station') {
+      hint.textContent = 'Pris från närmaste snabbladdare: ' + (data.operator || data.station) +
+        ' · ' + String(data.distanceKm).replace('.', ',') + ' km bort · verifiera i operatörens app';
+    } else if (data && data.source === 'national-average') {
+      hint.textContent = 'Riksgenomsnitt bland svenska laddoperatörer · använd 📍-knappen för pris nära dig';
+    } else {
+      hint.textContent = 'Genomsnittligt snabbladdarpris · operatörerna tar ca 4–7 kr/kWh';
+    }
+    hint.className = 'bc-hint';
+  }
+  bcSetSourceBadge(data && data.source === 'nearest-station' ? 'faststation' : 'fast');
+  var fastChip = document.getElementById('bc-chipFast');
+  if (fastChip) fastChip.textContent = '⚡ Snabbladdare ~' + kr.toFixed(2).replace('.', ',') + ' kr/kWh';
+  bcRenderChargeChips('fast');
+}
+
+function bcFetchFastPrice() {
+  if (!bcIsElectric || bcSharedApplying) return;
+  var lat = bcStartLat !== null ? bcStartLat : bcCurrentLat;
+  var lon = bcStartLon !== null ? bcStartLon : bcCurrentLon;
+  var hasPos = lat !== null && lon !== null;
+  // Position avrundad till ~1 km i cachenyckeln — små GPS-hopp ska inte spränga cachen
+  var cacheKey = BC_FAST_CACHE_KEY + '_' +
+    (hasPos ? lat.toFixed(2) + '_' + lon.toFixed(2) : 'riks');
+  var cached = null;
+  try {
+    var c = localStorage.getItem(cacheKey);
+    if (c) {
+      var obj = JSON.parse(c);
+      if (Date.now() - obj.ts < BC_FAST_CACHE_TTL) cached = obj.data;
+    }
+  } catch(e) {}
+  if (cached) { bcApplyFastPrice(cached); return; }
+
+  var hint = document.getElementById('bc-priceHint');
+  if (hint) { hint.textContent = 'Hämtar snabbladdarpris...'; hint.className = 'bc-hint loading'; }
+  bcRenderChargeChips('fast');
+
+  fetch(BC_FAST_API + (hasPos ? '?lat=' + lat + '&lon=' + lon : ''))
+    .then(function(r) {
+      if (!r.ok) throw new Error('no data');
+      return r.json();
+    })
+    .then(function(data) {
+      try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: data })); } catch(e) {}
+      bcApplyFastPrice(data);
+    })
+    .catch(function() { bcApplyFastPrice(null); });
 }
 
 function bcFetchElPrice() {
