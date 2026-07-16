@@ -24,6 +24,11 @@ app.get('/bensinkostnad.js', (_, res) => {
 let cache   = null;
 let cacheTs = 0;
 const CACHE_TTL = 12 * 60 * 60 * 1000;
+// Utan besökare på kalkylatorn förnyas cachen aldrig, så efter 12 h visar
+// /health "cold" och UptimeRobots nyckelordsövervakning larmar i onödan.
+// 4 h ger tre hämtningsförsök per TTL-fönster — "cold" betyder därmed att
+// skrapningen faktiskt är trasig, inte att sidan saknat trafik.
+const REWARM_INTERVAL = 4 * 60 * 60 * 1000;
 
 const FALLBACK = { bensin95: 18.90, diesel: 17.50, _source: 'fallback' };
 
@@ -167,6 +172,7 @@ async function warmUpCache() {
 if (require.main === module) {
   app.listen(PORT, () => console.log(`Bilresa server körs på port ${PORT}`));
   warmUpCache();
+  setInterval(warmUpCache, REWARM_INTERVAL);
 }
 
-module.exports = { app, fetchPrice, fetchPrices, fetchSpotPrice, resetCache, warmUpCache, FALLBACK, EL_FALLBACK_SPOT };
+module.exports = { app, fetchPrice, fetchPrices, fetchSpotPrice, resetCache, warmUpCache, FALLBACK, EL_FALLBACK_SPOT, CACHE_TTL, REWARM_INTERVAL };

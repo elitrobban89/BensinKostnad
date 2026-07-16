@@ -1,7 +1,7 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { app, fetchPrice, resetCache, warmUpCache, FALLBACK, EL_FALLBACK_SPOT } = require('./server');
+const { app, fetchPrice, resetCache, warmUpCache, FALLBACK, EL_FALLBACK_SPOT, CACHE_TTL, REWARM_INTERVAL } = require('./server');
 
 // Utdrag ur en riktig GlobalPetrolPrices-sida: första SEK-priset (meta/snitt)
 // får INTE användas — dagspriset är det som följs av "or USD".
@@ -283,6 +283,12 @@ test('warmUpCache fyller cachen så första anropet inte hämtar', async () => {
   const { body } = await get('/api/fuel-price');
   assert.equal(calls, 2); // ingen ny hämtning — svar ur förvärmd cache
   assert.equal(body.bensin95, 16.39);
+});
+
+test('omvärmningsintervallet ger flera försök innan cachen kallnar', () => {
+  // Minst två intervall måste rymmas i TTL-fönstret — annars räcker ett
+  // enda misslyckat försök för att /health ska visa cold och larma falskt
+  assert.ok(REWARM_INTERVAL * 2 < CACHE_TTL);
 });
 
 test('warmUpCache sväljer fel — servern startar ändå och nästa anrop hämtar', async () => {

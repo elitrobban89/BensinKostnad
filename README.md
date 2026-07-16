@@ -104,7 +104,7 @@ Ett minimalt Node.js/Express-API körs på `https://bilresa.onrender.com`:
 
 - Priset hämtas från globalpetrolprices.com (statisk HTML, uppdateras varje måndag)
 - Cachas 12 timmar på servern + 6 timmar i webbläsarens localStorage
-- Priscachen förvärms vid serverstart — första besökaren efter en deploy slipper vänta på skrapningen
+- Priscachen förvärms vid serverstart — första besökaren efter en deploy slipper vänta på skrapningen — och förnyas därefter var 4:e timme, så `/health` visar `warm` även under trafikfria perioder (utan omvärmningen kallnade cachen efter 12 h utan besök och UptimeRobot larmade falskt)
 - Faller tillbaka på senast kända priser vid nätverksfel; elpriset faller tillbaka på ett fast spotpris (flaggas med `_source: 'fallback'`)
 - Övervakas med UptimeRobot mot `/health`; nyckelordsövervakning på `warm` kan även larma om skrapningen slutar fungera
 
@@ -124,16 +124,16 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-52 tester med Nodes inbyggda testrunner — inga extra beroenden.
+53 tester med Nodes inbyggda testrunner — inga extra beroenden.
 
-**Backend (`server.test.js`, 22 st):**
+**Backend (`server.test.js`, 23 st):**
 
 - **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
 - **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte, `_source: 'globalpetrolprices-average'` flaggar när reservpriset används (sidlayouten har ändrats)
 - **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, fallback vid nätverksfel eller när prisraden saknas; **billigaste kommande timmen** hittas över dygnsgränsen (morgondagens fil) och saknad morgondagsfil tolereras
 - **`/bensinkostnad.js`** — kalkylatorfrontenden serveras med JS-content-type och 5 min cache
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
-- **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå
+- **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå; omvärmningsintervallet rymmer minst två försök per TTL-fönster så ett enstaka hämtningsfel inte ger falskt cold-larm
 
 **Frontend (`frontend.test.js`, 30 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
 
