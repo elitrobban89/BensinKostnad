@@ -390,6 +390,31 @@ test('bcVerifyLogin: nätverksfel fail open — token får fortsätta gälla', a
   assert.equal(ctx.bcIsLoggedIn(), true);
 });
 
+test('inloggning tar bort demo-felet och aktiverar knappen', () => {
+  const ctx = createEnv();
+  ctx.bcShowError('Du har använt alla 3 demosökningar. Logga in för obegränsad tillgång.');
+  ctx.els['bc-calcBtn'].disabled = true;
+  assert.equal(ctx.els['bc-error'].classList.contains('show'), true);
+  ctx.store['ca_token'] = 'token';   // nu inloggad
+  ctx.bcUpdateDemoUI();
+  assert.equal(ctx.els['bc-error'].classList.contains('show'), false); // demo-felet borta
+  assert.equal(ctx.els['bc-calcBtn'].disabled, false);                 // knappen aktiv igen
+});
+
+test('demoblockerad beräkning körs om automatiskt efter inloggning', async () => {
+  const ctx = createEnv({ fetchHandler: (url) =>
+    url.indexOf('/api/auth/me') !== -1
+      ? jsonResponse({ email: 'a@b.se', subscriptionStatus: 'active' })
+      : jsonResponse({}) });
+  for (let i = 0; i < 3; i++) ctx.bcIncrementDemo();  // fyll demogränsen
+  ctx.bcCalculate();                                  // blockeras
+  assert.equal(ctx.bcWasDemoBlocked, true);
+  ctx.store['ca_token'] = 'token';                    // logga in
+  ctx.bcVerifyLogin();
+  await tick();
+  assert.equal(ctx.bcWasDemoBlocked, false);          // flaggan nollställd = omkörning skedd
+});
+
 // ── Snabbladdarpris från Elbilsladdning-backenden ────────────────
 
 test('bcFetchFastPrice visar närmaste station med operatör och avstånd i hinten', async () => {

@@ -31,7 +31,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Returresa** — kryssruta som dubblar sträckan; uppdaterar resultaten dynamiskt utan ny sökning
 - **EV-data caching** — CarAdvice API-svar cachas i localStorage med 24 h TTL
 - **Serverdata för bensin/diesel/hybrid** — förbrukningssiffror hämtas från CarAdvice `/api/ice-consumption` (~950 varianter ur `ice_consumption`-tabellen) vid sidladdning, 24 h localStorage-cache; den statiska databasen i JS:en är fallback när API:et inte svarar
-- **Demo-läge** — utloggade användare får 5 gratis sökningar; blockeras därefter med login-CTA
+- **Demo-läge** — utloggade användare får 3 gratis sökningar; blockeras därefter med login-CTA
 - **Login-medvetenhet** — kalkylator-JS:et läser WordPress `body.logged-in`-klass och injicerar demo-banner + login-CTA dynamiskt
 - **Promo-kort** — komponent för elbilsladdningssidan med login-medveten visning
 - **Aurora-design** — långsamt driftande lila/indigo-gradient i header med glödande blobbar, hover-lyft på kort, animerad gradient + glow på beräkna-knappen och totalkostnadskortet, entré-animationer för karta/resultat; allt stängs av vid `prefers-reduced-motion`
@@ -66,8 +66,8 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | `src/bilresa-effekter-wpcode.js` / `.html` / `-shortcode.php` | Effekt-snippets för Bilresa-sidan |
 | `src/hemssida-effekter-wpcode.js` | Effekt-snippet för startsidan |
 | `server.js` | Node.js/Express backend — bränsle- och elpris-API + serverar kalkylatorfrontenden (`/bensinkostnad.js`) |
-| `server.test.js` | Backend-testsvit (22 tester) |
-| `frontend.test.js` | Frontend-testsvit — kör kalkylator-JS:et i DOM-stubbad vm-kontext (30 tester) |
+| `server.test.js` | Backend-testsvit (23 tester) |
+| `frontend.test.js` | Frontend-testsvit — kör kalkylator-JS:et i DOM-stubbad vm-kontext (35 tester) |
 | `.github/workflows/node.yml` | CI: syntaxkontroll + testsvit på varje push |
 | `package.json` | Node.js-beroenden |
 | `Dockerfile` | Docker-konfiguration för Render.com |
@@ -124,7 +124,7 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-56 tester med Nodes inbyggda testrunner — inga extra beroenden.
+58 tester med Nodes inbyggda testrunner — inga extra beroenden.
 
 **Backend (`server.test.js`, 23 st):**
 
@@ -135,7 +135,7 @@ docker run -p 3000:3000 bilresa-server
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå; omvärmningsintervallet rymmer minst två försök per TTL-fönster så ett enstaka hämtningsfel inte ger falskt cold-larm
 
-**Frontend (`frontend.test.js`, 33 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
+**Frontend (`frontend.test.js`, 35 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
 
 - **Elzoner** — latitud → SE1–SE4 (Kiruna/Umeå/Sundsvall/Gävle/Stockholm/Malmö), null → SE3
 - **CO₂** — faktor per bränsleläge; rutan skapas med rätt enhetsetikett (elmix/förbränning)

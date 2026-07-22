@@ -1512,6 +1512,10 @@ var BC_DEMO_MAX = 3;
 // null = serverkollen har inte svarat ännu; true/false = verifierat svar från CarAdvice
 var bcAuthValid = null;
 
+// Sant om en berakning blockerades av demogransen — anvands for att kora om den
+// automatiskt sa fort anvandaren loggat in (utan att hen behover klicka igen).
+var bcWasDemoBlocked = false;
+
 // Verifiera ca_token mot CarAdvice-backenden (samma konto som Bilrådgivningen/Elbilsladdning).
 // 401/403 = ogiltig/utgången session → städa localStorage så demoläget gäller.
 // Nätverksfel/5xx (t.ex. Render cold start) = fail open — token får gälla tills servern svarar.
@@ -1533,7 +1537,11 @@ function bcVerifyLogin() {
       localStorage.removeItem('ca_email');
       localStorage.removeItem('ca_status');
     }
-  }).catch(function() {}).then(function() { bcUpdateDemoUI(); });
+  }).catch(function() {}).then(function() {
+    bcUpdateDemoUI();
+    // Blev anvandaren blockerad av demogransen och ar nu inloggad? Kor om berakningen.
+    if (bcWasDemoBlocked && bcIsLoggedIn()) { bcWasDemoBlocked = false; bcCalculate(); }
+  });
 }
 
 function bcIsLoggedIn() {
@@ -1552,6 +1560,12 @@ function bcUpdateDemoUI() {
   if (bcIsLoggedIn()) {
     if (banner)   banner.style.display   = 'none';
     if (loginCta) loginCta.style.display = 'none';
+    // Inloggad -> lyft demosparren: aktivera knappen igen och ta bort ett ev.
+    // kvarvarande "du har anvant alla N demosokningar"-meddelande
+    var loggedBtn = document.getElementById('bc-calcBtn');
+    if (loggedBtn) loggedBtn.disabled = false;
+    var errEl = document.getElementById('bc-error');
+    if (errEl && errEl.textContent.indexOf('demos') !== -1) bcClearError();
     return;
   }
 
@@ -1582,8 +1596,10 @@ function bcCalculate() {
     bcShowError('Du har använt alla ' + BC_DEMO_MAX + ' demosökningar. Logga in för obegränsad tillgång.');
     var loginCta = document.getElementById('bc-loginCta');
     if (loginCta) loginCta.style.display = 'flex';
+    bcWasDemoBlocked = true; // kom ihag sa vi kan kora om berakningen direkt efter inloggning
     return;
   }
+  bcWasDemoBlocked = false;
 
   var dest = document.getElementById('bc-dest').value.trim();
   var cons = parseFloat(document.getElementById('bc-cons').value);
