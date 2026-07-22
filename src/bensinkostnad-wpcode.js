@@ -2152,7 +2152,7 @@ function bcInjectDemoUI() {
   // Demo-banner. Bygg alltid texten ur BC_DEMO_MAX (utan "av N"-total som kan bli
   // gammal) och skriv om en ev. hardkodad banner fran WordPress-HTML:en sa den inte
   // visar en foraldrad siffra — JS:et laddas fran Render, sa detta racker utan WP-paste.
-  var bannerInner = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Demoläge — <strong><span id="bc-demoCount">' + BC_DEMO_MAX + '</span> sökningar kvar</strong>. <a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="color:#92400e;font-weight:700">Logga in</a> för obegränsad tillgång.</span>';
+  var bannerInner = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Demoläge — <strong><span id="bc-demoCount">' + BC_DEMO_MAX + '</span> sökningar kvar</strong>. <a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html?from=bransle\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="color:#92400e;font-weight:700">Logga in</a> för obegränsad tillgång.</span>';
   var existingBanner = document.getElementById('bc-demoBanner');
   if (existingBanner) {
     existingBanner.innerHTML = bannerInner; // korrigerar gammal "av 5"-text fran WP-HTML
@@ -2164,14 +2164,20 @@ function bcInjectDemoUI() {
     wrap.insertBefore(banner, wrap.firstChild);
   }
 
-  // Login-CTA (läggs in efter results-div)
-  if (!document.getElementById('bc-loginCta')) {
+  // Login-CTA (läggs in efter results-div). Skriv om ev. hardkodad WP-variant sa
+  // onclick-URL:en (?from=bransle) och texten alltid ar den aktuella — self-healing
+  // pa samma satt som bannern, sa ingen WordPress-paste kravs.
+  var ctaInner = '<div style="font-size:1rem;font-weight:800;color:#fff">Vill du ha obegränsad tillgång?</div><p style="font-size:0.85rem;color:rgba(255,255,255,0.78);line-height:1.5;margin:0">Du kör i demoläge med <span id="bc-loginCtaCount">' + BC_DEMO_MAX + '</span> sökningar totalt. Logga in med ditt konto — samma inloggning som Bilrådgivningen och Elbilsladdning — för att använda kalkylatorn utan begränsning.</p><a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html?from=bransle\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;background:#fff;color:#1e2a3a;border-radius:10px;font-size:0.88rem;font-weight:700;text-decoration:none;align-self:flex-start">Logga in</a>';
+  var existingCta = document.getElementById('bc-loginCta');
+  if (existingCta) {
+    existingCta.innerHTML = ctaInner;
+  } else {
     var results = document.getElementById('bc-results');
     if (results) {
       var cta = document.createElement('div');
       cta.id = 'bc-loginCta';
       cta.style.cssText = 'display:none;flex-direction:column;gap:10px;margin-top:14px;background:linear-gradient(135deg,#1a3a5c,#2d1b69);border-radius:16px;padding:24px 22px;font-family:inherit';
-      cta.innerHTML = '<div style="font-size:1rem;font-weight:800;color:#fff">Vill du ha obegränsad tillgång?</div><p style="font-size:0.85rem;color:rgba(255,255,255,0.78);line-height:1.5;margin:0">Du kör i demoläge med <span id="bc-loginCtaCount">' + BC_DEMO_MAX + '</span> sökningar totalt. Logga in med ditt konto — samma inloggning som Bilrådgivningen och Elbilsladdning — för att använda kalkylatorn utan begränsning.</p><a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;background:#fff;color:#1e2a3a;border-radius:10px;font-size:0.88rem;font-weight:700;text-decoration:none;align-self:flex-start">Logga in</a>';
+      cta.innerHTML = ctaInner;
       results.parentNode.insertBefore(cta, results.nextSibling);
     }
   }
