@@ -2149,12 +2149,18 @@ function bcInjectDemoUI() {
   var wrap = document.querySelector('.bc-wrap');
   if (!wrap) return;
 
-  // Demo-banner
-  if (!document.getElementById('bc-demoBanner')) {
+  // Demo-banner. Bygg alltid texten ur BC_DEMO_MAX (utan "av N"-total som kan bli
+  // gammal) och skriv om en ev. hardkodad banner fran WordPress-HTML:en sa den inte
+  // visar en foraldrad siffra — JS:et laddas fran Render, sa detta racker utan WP-paste.
+  var bannerInner = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Demoläge — <strong><span id="bc-demoCount">' + BC_DEMO_MAX + '</span> sökningar kvar</strong>. <a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="color:#92400e;font-weight:700">Logga in</a> för obegränsad tillgång.</span>';
+  var existingBanner = document.getElementById('bc-demoBanner');
+  if (existingBanner) {
+    existingBanner.innerHTML = bannerInner; // korrigerar gammal "av 5"-text fran WP-HTML
+  } else {
     var banner = document.createElement('div');
     banner.id = 'bc-demoBanner';
     banner.style.cssText = 'display:none;align-items:center;gap:10px;background:rgba(251,191,36,0.08);border:1.5px solid rgba(251,191,36,0.35);border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:0.84rem;color:#92400e;line-height:1.4;font-family:inherit';
-    banner.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Demoläge — <strong><span id="bc-demoCount">' + BC_DEMO_MAX + '</span> av ' + BC_DEMO_MAX + '</strong> sökningar kvar. <a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="color:#92400e;font-weight:700">Logga in</a> för obegränsad tillgång.</span>';
+    banner.innerHTML = bannerInner;
     wrap.insertBefore(banner, wrap.firstChild);
   }
 
