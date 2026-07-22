@@ -343,20 +343,50 @@ test('bcSetFuelMode rensar priset vid byte el ↔ fossilt men inte bensin ↔ di
 
 // ── Demo-räknaren ────────────────────────────────────────────────
 
-test('demo-räknaren räknar ner från 5 och stannar på 0', () => {
+test('demo-räknaren räknar ner från 3 och stannar på 0', () => {
   const ctx = createEnv();
-  assert.equal(ctx.bcDemoRemaining(), 5);
-  ctx.bcIncrementDemo();
-  ctx.bcIncrementDemo();
   assert.equal(ctx.bcDemoRemaining(), 3);
+  ctx.bcIncrementDemo();
+  ctx.bcIncrementDemo();
+  assert.equal(ctx.bcDemoRemaining(), 1);
   for (let i = 0; i < 10; i++) ctx.bcIncrementDemo();
   assert.equal(ctx.bcDemoRemaining(), 0);
 });
 
-test('inloggad via ca_status räknas som inloggad', () => {
+test('ca_token räknas som inloggad tills serverkollen sagt sitt', () => {
   const ctx = createEnv();
   assert.equal(ctx.bcIsLoggedIn(), false);
+  ctx.store['ca_token'] = 'nagon-token';
+  assert.equal(ctx.bcIsLoggedIn(), true); // optimistiskt innan bcVerifyLogin svarat
+});
+
+test('bcVerifyLogin: 401 rensar token och aktiverar demoläget', async () => {
+  const ctx = createEnv({ fetchHandler: () => Promise.resolve({ ok: false, status: 401 }) });
+  ctx.store['ca_token'] = 'gammal-token';
   ctx.store['ca_status'] = 'active';
+  assert.equal(ctx.bcIsLoggedIn(), true);
+  ctx.bcVerifyLogin();
+  await tick();
+  assert.equal(ctx.bcIsLoggedIn(), false);
+  assert.equal(ctx.store['ca_token'], undefined);
+  assert.equal(ctx.store['ca_status'], undefined);
+  assert.ok(ctx.fetchLog[0].includes('/api/auth/me'));
+});
+
+test('bcVerifyLogin: 200 behåller inloggningen och uppdaterar status', async () => {
+  const ctx = createEnv({ fetchHandler: () => jsonResponse({ email: 'a@b.se', subscriptionStatus: 'active' }) });
+  ctx.store['ca_token'] = 'giltig-token';
+  ctx.bcVerifyLogin();
+  await tick();
+  assert.equal(ctx.bcIsLoggedIn(), true);
+  assert.equal(ctx.store['ca_status'], 'active');
+});
+
+test('bcVerifyLogin: nätverksfel fail open — token får fortsätta gälla', async () => {
+  const ctx = createEnv({ fetchHandler: () => Promise.reject(new Error('offline')) });
+  ctx.store['ca_token'] = 'token';
+  ctx.bcVerifyLogin();
+  await tick();
   assert.equal(ctx.bcIsLoggedIn(), true);
 });
 

@@ -1506,12 +1506,40 @@ function bcCountUp(id, endVal, decimals) {
   requestAnimationFrame(step);
 }
 
-// ── Demo-counter (localStorage, max 5 för utloggade) ──────────────
-var BC_DEMO_MAX = 5;
+// ── Demo-counter (localStorage, max 3 för utloggade) ──────────────
+var BC_DEMO_MAX = 3;
+
+// null = serverkollen har inte svarat ännu; true/false = verifierat svar från CarAdvice
+var bcAuthValid = null;
+
+// Verifiera ca_token mot CarAdvice-backenden (samma konto som Bilrådgivningen/Elbilsladdning).
+// 401/403 = ogiltig/utgången session → städa localStorage så demoläget gäller.
+// Nätverksfel/5xx (t.ex. Render cold start) = fail open — token får gälla tills servern svarar.
+function bcVerifyLogin() {
+  var token = localStorage.getItem('ca_token');
+  if (!token) { bcAuthValid = false; bcUpdateDemoUI(); return; }
+  fetch('https://caradvice.onrender.com/api/auth/me', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  }).then(function(res) {
+    if (res.ok) {
+      bcAuthValid = true;
+      return res.json().then(function(u) {
+        if (u && u.subscriptionStatus) localStorage.setItem('ca_status', u.subscriptionStatus);
+      });
+    }
+    if (res.status === 401 || res.status === 403) {
+      bcAuthValid = false;
+      localStorage.removeItem('ca_token');
+      localStorage.removeItem('ca_email');
+      localStorage.removeItem('ca_status');
+    }
+  }).catch(function() {}).then(function() { bcUpdateDemoUI(); });
+}
 
 function bcIsLoggedIn() {
-  return document.body.classList.contains('logged-in') ||
-         localStorage.getItem('ca_status') === 'active';
+  if (document.body.classList.contains('logged-in')) return true; // WP-inloggad (sajtägaren)
+  if (bcAuthValid !== null) return bcAuthValid;                   // serververifierat svar vinner
+  return !!localStorage.getItem('ca_token');                      // före verifiering: optimistiskt
 }
 function bcDemoRemaining() {
   var used = parseInt(localStorage.getItem('bc_demo_count') || '0', 10);
@@ -1551,7 +1579,7 @@ function bcCalculate() {
 
   // Blockera om demo-gränsen är nådd
   if (!bcIsLoggedIn() && bcDemoRemaining() === 0) {
-    bcShowError('Du har använt alla 5 demosökningar. Logga in för obegränsad tillgång.');
+    bcShowError('Du har använt alla ' + BC_DEMO_MAX + ' demosökningar. Logga in för obegränsad tillgång.');
     var loginCta = document.getElementById('bc-loginCta');
     if (loginCta) loginCta.style.display = 'flex';
     return;
@@ -1664,7 +1692,7 @@ function bcDoCalculate(cons, pris) {
   if (!bcIsLoggedIn()) {
     bcIncrementDemo();
     if (bcDemoRemaining() === 0) {
-      bcShowError('Du har nu använt alla 5 demosökningar. Logga in för obegränsad tillgång.');
+      bcShowError('Du har nu använt alla ' + BC_DEMO_MAX + ' demosökningar. Logga in för obegränsad tillgång.');
     }
   }
 }
@@ -2126,7 +2154,7 @@ function bcInjectDemoUI() {
     var banner = document.createElement('div');
     banner.id = 'bc-demoBanner';
     banner.style.cssText = 'display:none;align-items:center;gap:10px;background:rgba(251,191,36,0.08);border:1.5px solid rgba(251,191,36,0.35);border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:0.84rem;color:#92400e;line-height:1.4;font-family:inherit';
-    banner.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Demoläge — <strong><span id="bc-demoCount">5</span> av 5</strong> sökningar kvar. <a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="color:#92400e;font-weight:700">Logga in</a> för obegränsad tillgång.</span>';
+    banner.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Demoläge — <strong><span id="bc-demoCount">' + BC_DEMO_MAX + '</span> av ' + BC_DEMO_MAX + '</strong> sökningar kvar. <a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="color:#92400e;font-weight:700">Logga in</a> för obegränsad tillgång.</span>';
     wrap.insertBefore(banner, wrap.firstChild);
   }
 
@@ -2137,7 +2165,7 @@ function bcInjectDemoUI() {
       var cta = document.createElement('div');
       cta.id = 'bc-loginCta';
       cta.style.cssText = 'display:none;flex-direction:column;gap:10px;margin-top:14px;background:linear-gradient(135deg,#1a3a5c,#2d1b69);border-radius:16px;padding:24px 22px;font-family:inherit';
-      cta.innerHTML = '<div style="font-size:1rem;font-weight:800;color:#fff">Vill du ha obegränsad tillgång?</div><p style="font-size:0.85rem;color:rgba(255,255,255,0.78);line-height:1.5;margin:0">Du kör i demoläge med <span id="bc-loginCtaCount">5</span> sökningar totalt. Logga in som prenumerant för att använda kalkylatorn utan begränsning.</p><a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;background:#fff;color:#1e2a3a;border-radius:10px;font-size:0.88rem;font-weight:700;text-decoration:none;align-self:flex-start">Logga in</a>';
+      cta.innerHTML = '<div style="font-size:1rem;font-weight:800;color:#fff">Vill du ha obegränsad tillgång?</div><p style="font-size:0.85rem;color:rgba(255,255,255,0.78);line-height:1.5;margin:0">Du kör i demoläge med <span id="bc-loginCtaCount">' + BC_DEMO_MAX + '</span> sökningar totalt. Logga in med ditt konto — samma inloggning som Bilrådgivningen och Elbilsladdning — för att använda kalkylatorn utan begränsning.</p><a href="#" onclick="if(window.bcGuardOpenSubscribe){bcGuardOpenSubscribe();}else{window.open(\'https://caradvice.onrender.com/subscribe.html\',\'_blank\',\'width=480,height=650,resizable=yes\');}return false;" style="display:inline-flex;align-items:center;gap:8px;padding:11px 20px;background:#fff;color:#1e2a3a;border-radius:10px;font-size:0.88rem;font-weight:700;text-decoration:none;align-self:flex-start">Logga in</a>';
       results.parentNode.insertBefore(cta, results.nextSibling);
     }
   }
@@ -2230,20 +2258,23 @@ window.addEventListener('message', function(ev) {
     if (ev.data.token) localStorage.setItem('ca_token', ev.data.token);
     if (ev.data.email) localStorage.setItem('ca_email', ev.data.email);
     if (ev.data.status) localStorage.setItem('ca_status', ev.data.status);
-    bcUpdateDemoUI();
+    bcAuthValid = null;      // ny token — låt serverkollen avgöra
+    bcVerifyLogin();
   }
   if (ev.data.type === 'CA_LOGOUT') {
     localStorage.removeItem('ca_token');
     localStorage.removeItem('ca_email');
     localStorage.removeItem('ca_status');
+    bcAuthValid = false;
     bcUpdateDemoUI();
   }
 });
 
 // ── Starta när DOM är redo ────────────────────────────
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', function() { bcWireEvents(); bcUpdateDemoUI(); });
+  document.addEventListener('DOMContentLoaded', function() { bcWireEvents(); bcUpdateDemoUI(); bcVerifyLogin(); });
 } else {
   bcWireEvents();
   bcUpdateDemoUI();
+  bcVerifyLogin();
 }

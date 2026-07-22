@@ -124,7 +124,7 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-53 tester med Nodes inbyggda testrunner — inga extra beroenden.
+56 tester med Nodes inbyggda testrunner — inga extra beroenden.
 
 **Backend (`server.test.js`, 23 st):**
 
@@ -135,7 +135,7 @@ docker run -p 3000:3000 bilresa-server
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå; omvärmningsintervallet rymmer minst två försök per TTL-fönster så ett enstaka hämtningsfel inte ger falskt cold-larm
 
-**Frontend (`frontend.test.js`, 30 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
+**Frontend (`frontend.test.js`, 33 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
 
 - **Elzoner** — latitud → SE1–SE4 (Kiruna/Umeå/Sundsvall/Gävle/Stockholm/Malmö), null → SE3
 - **CO₂** — faktor per bränsleläge; rutan skapas med rätt enhetsetikett (elmix/förbränning)
@@ -148,7 +148,7 @@ docker run -p 3000:3000 bilresa-server
 - **Laddstopp** — hämtas och visas med station/effekt/pris; hoppas över för korta resor och fossilläge; döljs när inga stopp behövs
 - **Jämförelsen** — visar de två andra drivmedlen med rätt kostnad/CO₂ och billigare/dyrare-badge
 - **Lägesbyte** — priset rensas vid el ↔ fossilt men behålls bensin ↔ diesel
-- **Demo-räknaren** — 5 → 0, stannar på 0; `ca_status=active` räknas som inloggad
+- **Demo-räknaren & inloggningen** — 3 → 0, stannar på 0; `ca_token` räknas optimistiskt som inloggad tills `bcVerifyLogin` fått svar från CarAdvice `/api/auth/me` (samma konto som Bilrådgivningen/Elbilsladdning): 401 rensar tokenen och aktiverar demoläget, 200 behåller inloggningen och uppdaterar `ca_status`, nätverksfel fail open
 - **`bcDoCalculate`** — hela kedjan med returresa: mil, liter, kostnad, CO₂ och dela-knappen
 
 ```bash
