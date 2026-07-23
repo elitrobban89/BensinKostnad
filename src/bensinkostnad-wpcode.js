@@ -2306,3 +2306,388 @@ if (document.readyState === 'loading') {
   bcUpdateDemoUI();
   bcVerifyLogin();
 }
+
+
+// ═══════════════════════════════════════════════════════
+//  BRÄNSLEKOSTNAD — uppstartssplash (fuel-tema, glas + glow)
+//  Fullskärms-takeover som visas första besöket per webbläsare. Statusrader tickar
+//  igenom alla datakällor kalkylatorn använder och tänds gröna en efter en, med en
+//  bränslemätare (amber→grön) som progress. Auto-injiceras med resten av /bensinkostnad.js.
+//  Återspela med ?splash=1 eller window.bcReplaySplash().
+// ═══════════════════════════════════════════════════════
+(function () {
+  'use strict';
+
+  var SEEN_KEY = 'bc_splash_seen_v1';
+  var CARS_FLOOR = 800;
+  var CARS_ROW = 1;
+  var FORCE = /[?&]splash=1/.test(location.search);
+
+  var ROWS = [
+    { ic: '⛽', t: 'Br\xe4nslepriser',  s: 'Dagsaktuella bensin &amp; diesel', tag: 'ONLINE' },
+    { ic: '🚗', t: 'Bildatabas',  kind: 'cars' },
+    { ic: '⚡', t: 'Elpriser',        s: 'elprisetjustnu.se \xb7 SE1–SE4 spotpris', tag: 'LIVE' },
+    { ic: '🔋', t: 'Elf\xf6rbrukning', s: 'kWh/mil f\xf6r elbilar \xb7 CarAdvice' },
+    { ic: '🛢️', t: 'F\xf6rbrukning', s: 'l/mil bensin, diesel &amp; hybrid' },
+    { ic: '🗺️', t: 'Ruttber\xe4kning', s: 'Verklig str\xe4cka via v\xe4gn\xe4tet' },
+    { ic: '💰', t: 'Sparkalkyl',   s: 'J\xe4mf\xf6r bensin, diesel &amp; el' }
+  ];
+
+  var BOOT_PHRASES = ['l\xe4ser in br\xe4nslepriser', 'h\xe4mtar elpris SE1–SE4', 'kalibrerar f\xf6rbrukning per mil', 'r\xe4knar ut din kostnad'];
+
+  function fmt(n) { return n.toLocaleString('sv-SE'); }
+  function clampFloor(live, floorVal) { return Math.max(floorVal, Math.floor((live || 0) / 10) * 10); }
+
+  function countCars() {
+    try {
+      var db = window.BC_CAR_DB || (typeof BC_CAR_DB !== 'undefined' ? BC_CAR_DB : null);
+      if (!db) return 0;
+      var n = 0;
+      for (var k in db) { if (Object.prototype.hasOwnProperty.call(db, k)) n += Object.keys(db[k]).length; }
+      return n;
+    } catch (e) { return 0; }
+  }
+
+  var targetCars = clampFloor(countCars(), CARS_FLOOR);
+  var animated = {};
+
+  function carsText(e) {
+    var n = Math.round(targetCars * e);
+    var plus = e >= 1 ? '+' : '';
+    return '<b>' + fmt(n) + plus + '</b> bilmodeller \xb7 l/mil &amp; kWh/mil';
+  }
+
+  function injectStyles() {
+    if (document.getElementById('bcsp-style')) return;
+    var css = document.createElement('style');
+    css.id = 'bcsp-style';
+    css.textContent = [
+      '.bcsp{position:fixed;inset:0;z-index:99999;overflow:hidden;',
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;',
+        'padding:30px 22px;text-align:center;',
+        "font-family:'Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,Roboto,sans-serif;",
+        'background:radial-gradient(ellipse at 50% 0%,#2a1c08,#120c04 58%,#0a0703 100%);',
+        'opacity:1;transition:opacity .5s ease;}',
+      '.bcsp.bcsp-out{opacity:0;}',
+      '.bcsp::before{content:"";position:absolute;inset:0;pointer-events:none;',
+        'background:radial-gradient(ellipse at 76% 8%,rgba(245,158,11,.18) 0%,transparent 48%),',
+          'radial-gradient(ellipse at 16% 92%,rgba(34,197,94,.14) 0%,transparent 46%);',
+        'animation:bcsp-aurora 7s ease-in-out infinite alternate;}',
+      '.bcsp::after{content:"";position:absolute;left:0;right:0;height:2px;top:0;pointer-events:none;',
+        'background:linear-gradient(90deg,transparent,rgba(251,146,60,.7),rgba(34,197,94,.6),transparent);',
+        'box-shadow:0 0 18px rgba(245,158,11,.6);animation:bcsp-scan 3.4s linear infinite;opacity:.7;}',
+      '.bcsp-inner{position:relative;z-index:1;width:100%;max-width:392px;',
+        'display:flex;flex-direction:column;align-items:center;}',
+      // Glaskort — glöden ligger i background-lagret (inte ::before) så texten inte tvättas ur
+      '.bcsp-card{position:relative;width:100%;padding:30px 22px 24px;border-radius:26px;',
+        'display:flex;flex-direction:column;align-items:center;',
+        'background:radial-gradient(120% 55% at 50% -8%,rgba(251,191,36,.26),transparent 68%),',
+          'radial-gradient(100% 45% at 50% 108%,rgba(34,197,94,.14),transparent 70%),',
+          'linear-gradient(160deg,rgba(46,34,16,.92),rgba(18,12,5,.95));',
+        '-webkit-backdrop-filter:blur(24px) saturate(150%);backdrop-filter:blur(24px) saturate(150%);',
+        'border:1px solid rgba(251,191,36,.22);',
+        'box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.16),',
+          'inset 0 0 50px rgba(245,158,11,.08),0 0 70px rgba(245,158,11,.16),0 0 120px rgba(251,146,60,.1);',
+        'animation:bcsp-rise .55s ease both;}',
+      // Kärna (bränsledroppe + blixt)
+      '.bcsp-core{position:relative;width:96px;height:96px;margin-bottom:16px;',
+        'display:flex;align-items:center;justify-content:center;animation:bcsp-rise .5s ease both;}',
+      '.bcsp-ring{position:absolute;inset:0;border-radius:50%;',
+        'background:conic-gradient(from 0deg,rgba(245,158,11,0),#f59e0b 16%,#fb923c 46%,#22c55e 78%,rgba(34,197,94,0));',
+        '-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));',
+        'mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));',
+        'filter:drop-shadow(0 0 8px rgba(245,158,11,.6));animation:bcsp-rot 1.5s linear infinite;}',
+      '.bcsp-pulse{position:absolute;inset:6px;border-radius:50%;border:1.5px solid rgba(245,158,11,.45);',
+        'animation:bcsp-pulse 2.1s ease-out infinite;}',
+      '.bcsp-pulse.p2{animation-delay:1.05s;border-color:rgba(34,197,94,.4);}',
+      '.bcsp-node{position:relative;width:62px;height:62px;border-radius:19px;',
+        'background:linear-gradient(145deg,rgba(74,54,20,.92),rgba(58,40,14,.88));',
+        'border:1px solid rgba(251,191,36,.4);',
+        'display:flex;align-items:center;justify-content:center;',
+        'box-shadow:0 8px 30px rgba(245,158,11,.5),0 0 34px rgba(251,146,60,.32),',
+          'inset 0 1px 0 rgba(255,255,255,.22),inset 0 0 18px rgba(245,158,11,.22);}',
+      '.bcsp-node svg{filter:drop-shadow(0 0 6px rgba(251,191,36,.75));}',
+      '.bcsp-bolt{position:absolute;top:-5px;right:-5px;width:24px;height:24px;border-radius:50%;',
+        'background:#160d03;border:1px solid rgba(34,197,94,.6);display:flex;align-items:center;justify-content:center;',
+        'box-shadow:0 0 12px rgba(34,197,94,.6);animation:bcsp-boltpulse 1.5s ease-in-out infinite;}',
+      '.bcsp-bolt svg{width:12px;height:12px;fill:#4ade80;filter:none;}',
+      '.bcsp-title{font-size:1.35rem;font-weight:800;letter-spacing:-.4px;margin:0 0 8px;',
+        'background:linear-gradient(120deg,#fff 34%,#fcd34d 100%);',
+        '-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;',
+        'filter:drop-shadow(0 1px 8px rgba(245,158,11,.5));animation:bcsp-rise .5s ease .05s both;}',
+      '.bcsp-chip{display:inline-flex;align-items:center;gap:5px;margin:0 0 14px;padding:3px 11px;',
+        'border-radius:20px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.42);',
+        'font-size:.6rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#fcd34d;',
+        'animation:bcsp-rise .5s ease .08s both;}',
+      '.bcsp-chip svg{width:11px;height:11px;fill:#fbbf24;}',
+      '.bcsp-boot{font-family:ui-monospace,SFMono-Regular,"Cascadia Code",Consolas,monospace;',
+        'font-size:.74rem;color:rgba(253,230,138,.85);margin:0 0 20px;min-height:1.2em;',
+        'letter-spacing:.2px;animation:bcsp-rise .5s ease .1s both;}',
+      '.bcsp-boot .pr{color:#4ade80;font-weight:700;margin-right:5px;}',
+      '.bcsp-cur{display:inline-block;width:7px;height:.95em;background:#fbbf24;margin-left:3px;',
+        'vertical-align:-1px;animation:bcsp-blink 1s steps(1) infinite;}',
+      '.bcsp-rows{width:100%;display:flex;flex-direction:column;gap:7px;}',
+      '.bcsp-row{display:flex;align-items:center;gap:11px;text-align:left;padding:9px 12px;border-radius:13px;',
+        'background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.18);',
+        'box-shadow:inset 0 1px 0 rgba(255,255,255,.09);',
+        'opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease,border-color .3s,background .3s,box-shadow .3s;}',
+      '.bcsp-row.show{opacity:1;transform:translateY(0);}',
+      '.bcsp-row.done{border-color:rgba(52,211,153,.5);background:rgba(34,197,94,.13);',
+        'box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 22px rgba(34,197,94,.2);}',
+      '.bcsp-ic{font-size:1.05rem;flex-shrink:0;width:22px;text-align:center;filter:drop-shadow(0 0 5px rgba(245,158,11,.4));}',
+      '.bcsp-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}',
+      '.bcsp-tx b{font-size:.83rem;font-weight:700;color:#fff6e6;display:flex;align-items:center;gap:7px;}',
+      '.bcsp-tx i{font-size:.69rem;font-style:normal;color:rgba(253,230,138,.78);',
+        'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '.bcsp-tx i b{color:#fcd34d;font-weight:800;font-style:normal;display:inline;}',
+      '.bcsp-onl{display:inline-flex;align-items:center;gap:4px;padding:1px 7px 1px 5px;border-radius:20px;',
+        'font-size:.52rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;',
+        'color:#6ee7b7;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.4);',
+        'box-shadow:0 0 10px rgba(34,197,94,.25);}',
+      '.bcsp-onl.live{color:#fcd34d;background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.42);box-shadow:0 0 10px rgba(245,158,11,.25);}',
+      '.bcsp-onl .dot{width:5px;height:5px;border-radius:50%;background:currentColor;',
+        'box-shadow:0 0 6px currentColor;animation:bcsp-onlpulse 1.4s ease-in-out infinite;}',
+      '.bcsp-st{flex-shrink:0;width:20px;height:20px;display:flex;align-items:center;justify-content:center;}',
+      '.bcsp-spin{width:14px;height:14px;border-radius:50%;',
+        'border:2px solid rgba(245,158,11,.2);border-top-color:#fbbf24;animation:bcsp-spin .6s linear infinite;}',
+      '.bcsp-check{width:19px;height:19px;border-radius:50%;background:rgba(34,197,94,.18);',
+        'border:1px solid rgba(34,197,94,.55);color:#4ade80;font-size:11px;font-weight:900;',
+        'display:flex;align-items:center;justify-content:center;animation:bcsp-pop .3s ease;}',
+      // Bränslemätare (progress)
+      '.bcsp-gauge{position:relative;width:100%;height:12px;border-radius:6px;margin-top:20px;',
+        'border:1.5px solid rgba(251,191,36,.4);background:rgba(255,255,255,.05);overflow:hidden;}',
+      '.bcsp-fill{height:100%;width:0;border-radius:5px;',
+        'background:linear-gradient(90deg,#f59e0b,#fb923c,#22c55e);transition:width .55s ease;',
+        'box-shadow:0 0 12px rgba(245,158,11,.6);position:relative;}',
+      '.bcsp-fill::after{content:"";position:absolute;inset:0;',
+        'background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);',
+        'animation:bcsp-shine 1.4s linear infinite;}',
+      '.bcsp-pct{margin-top:9px;font-size:.66rem;font-weight:700;letter-spacing:.08em;',
+        'color:rgba(252,211,77,.75);font-family:ui-monospace,Consolas,monospace;}',
+      '.bcsp.bcsp-ready .bcsp-node{box-shadow:0 6px 30px rgba(245,158,11,.7),0 0 36px rgba(34,197,94,.55);animation:bcsp-charge .6s ease;}',
+      '.bcsp.bcsp-ready .bcsp-ring{animation-duration:.5s;}',
+      '.bcsp.bcsp-ready .bcsp-boot{color:#6ee7b7;}',
+      '.bcsp.bcsp-ready .bcsp-boot .pr{color:#22c55e;}',
+      '.bcsp.bcsp-ready .bcsp-fill{background:linear-gradient(90deg,#22c55e,#4ade80);box-shadow:0 0 16px rgba(34,197,94,.7);}',
+      '.bcsp.bcsp-ready .bcsp-pct{color:#6ee7b7;}',
+      '.bcsp-skip{position:absolute;top:14px;right:16px;z-index:2;background:rgba(255,255,255,.07);',
+        'border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.6);font-size:.68rem;font-weight:600;',
+        'padding:4px 11px;border-radius:20px;cursor:pointer;transition:all .15s;',
+        "font-family:inherit;letter-spacing:.02em;}",
+      '.bcsp-skip:hover{background:rgba(255,255,255,.15);color:#fff;}',
+      '@keyframes bcsp-spin{to{transform:rotate(360deg);}}',
+      '@keyframes bcsp-rot{to{transform:rotate(360deg);}}',
+      '@keyframes bcsp-rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}',
+      '@keyframes bcsp-pulse{0%{transform:scale(.72);opacity:.65;}100%{transform:scale(1.35);opacity:0;}}',
+      '@keyframes bcsp-boltpulse{0%,100%{box-shadow:0 0 10px rgba(34,197,94,.45);}50%{box-shadow:0 0 18px rgba(34,197,94,.9);}}',
+      '@keyframes bcsp-charge{0%{transform:scale(1);}45%{transform:scale(1.15);}100%{transform:scale(1);}}',
+      '@keyframes bcsp-aurora{0%{opacity:.7;}100%{opacity:1;}}',
+      '@keyframes bcsp-blink{0%,100%{opacity:1;}50%{opacity:0;}}',
+      '@keyframes bcsp-pop{0%{transform:scale(.4);opacity:0;}60%{transform:scale(1.15);}100%{transform:scale(1);opacity:1;}}',
+      '@keyframes bcsp-scan{0%{top:-2px;opacity:0;}12%{opacity:.7;}88%{opacity:.7;}100%{top:100%;opacity:0;}}',
+      '@keyframes bcsp-shine{0%{transform:translateX(-100%);}100%{transform:translateX(100%);}}',
+      '@keyframes bcsp-onlpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.45;transform:scale(1.35);}}',
+      '@media (max-width:520px){',
+        '.bcsp{justify-content:flex-start;padding:34px 12px 20px;}',
+        '.bcsp-card{padding:24px 15px 20px;border-radius:22px;}',
+        '.bcsp-title{font-size:1.2rem;}',
+        '.bcsp-core{width:78px;height:78px;margin-bottom:12px;}',
+        '.bcsp-node{width:54px;height:54px;border-radius:16px;}',
+        '.bcsp-chip{margin-bottom:12px;}',
+        '.bcsp-boot{margin-bottom:15px;font-size:.72rem;}',
+        '.bcsp-rows{gap:6px;}.bcsp-row{padding:8px 12px;gap:10px;}',
+        '.bcsp-tx b{font-size:.8rem;}.bcsp-tx i{font-size:.67rem;}',
+        '.bcsp-gauge{margin-top:15px;}',
+      '}',
+      '@media (prefers-reduced-motion:reduce){',
+        '.bcsp *{animation:none!important;transition:none!important;}.bcsp::after{display:none;}}'
+    ].join('');
+    document.head.appendChild(css);
+  }
+
+  var DROP_SVG =
+    '<svg viewBox="0 0 40 40" width="30" height="30" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M20 6 C20 6 30 18 30 26 A10 10 0 0 1 10 26 C10 18 20 6 20 6 Z" ' +
+        'fill="rgba(251,191,36,0.2)" stroke="rgba(252,211,77,0.75)" stroke-width="1.6"/>' +
+      '<path d="M16 25 a4 5 0 0 0 4 5" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.4" stroke-linecap="round"/>' +
+    '</svg>';
+
+  var BOLT_SVG =
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/></svg>';
+
+  function subFor(row) {
+    if (row.kind === 'cars') return 'R\xe4knar bilmodeller…';
+    return row.s;
+  }
+
+  function tagHtml(tag) {
+    if (!tag) return '';
+    var cls = tag === 'LIVE' ? 'bcsp-onl live' : 'bcsp-onl';
+    return '<span class="' + cls + '"><span class="dot"></span>' + tag + '</span>';
+  }
+
+  function rowsHtml() {
+    return ROWS.map(function (r, i) {
+      return '<div class="bcsp-row" data-i="' + i + '">' +
+        '<span class="bcsp-ic">' + r.ic + '</span>' +
+        '<span class="bcsp-tx"><b>' + r.t + tagHtml(r.tag) + '</b><i class="bcsp-suba">' + subFor(r) + '</i></span>' +
+        '<span class="bcsp-st"><span class="bcsp-spin"></span></span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function template() {
+    return '' +
+      '<button class="bcsp-skip" type="button" aria-label="Hoppa \xf6ver">Hoppa \xf6ver ✕</button>' +
+      '<div class="bcsp-inner">' +
+        '<div class="bcsp-card">' +
+          '<div class="bcsp-core">' +
+            '<span class="bcsp-ring"></span>' +
+            '<span class="bcsp-pulse"></span><span class="bcsp-pulse p2"></span>' +
+            '<span class="bcsp-node">' + DROP_SVG + '<span class="bcsp-bolt">' + BOLT_SVG + '</span></span>' +
+          '</div>' +
+          '<h3 class="bcsp-title">Br\xe4nslekostnad</h3>' +
+          '<span class="bcsp-chip">' + BOLT_SVG + ' Dagsaktuella priser</span>' +
+          '<p class="bcsp-boot"><span class="pr">▸</span><span class="bcsp-boot-tx"></span><span class="bcsp-cur"></span></p>' +
+          '<div class="bcsp-rows">' + rowsHtml() + '</div>' +
+          '<div class="bcsp-gauge"><div class="bcsp-fill"></div></div>' +
+          '<div class="bcsp-pct">0% klart</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function suba(i) { return document.querySelector('.bcsp-row[data-i="' + i + '"] .bcsp-suba'); }
+
+  function animate(el, dur, render) {
+    var start = performance.now();
+    (function step(now) {
+      var p = Math.min(1, (now - start) / dur);
+      el.innerHTML = render(1 - Math.pow(1 - p, 3));
+      if (p < 1) requestAnimationFrame(step);
+    })(performance.now());
+  }
+
+  function animateCars() {
+    if (animated.cars) return;
+    var el = suba(CARS_ROW);
+    if (!el) return;
+    animated.cars = true;
+    animate(el, 1400, function (e) { return carsText(e); });
+  }
+
+  function startBoot(el) {
+    var pi = 0, ci = 0, mode = 'type', stopped = false;
+    function set(txt) { el.innerHTML = txt; }
+    function tick() {
+      if (stopped) return;
+      var phrase = BOOT_PHRASES[pi];
+      if (mode === 'type') {
+        ci++; set(phrase.slice(0, ci));
+        if (ci >= phrase.length) { mode = 'hold'; ci = 0; setTimeout(tick, 900); return; }
+        setTimeout(tick, 40);
+      } else if (mode === 'hold') {
+        mode = 'erase'; ci = phrase.length; setTimeout(tick, 30);
+      } else {
+        ci -= 2; if (ci < 0) ci = 0; set(phrase.slice(0, ci));
+        if (ci <= 0) { pi = (pi + 1) % BOOT_PHRASES.length; mode = 'type'; }
+        setTimeout(tick, 22);
+      }
+    }
+    tick();
+    return { stop: function (finalTxt) { stopped = true; set(finalTxt); } };
+  }
+
+  function markSeen() { try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {} }
+  function setPct(el, p) { if (el) el.textContent = Math.round(p) + '% klart'; }
+
+  function run() {
+    if (document.querySelector('.bcsp')) return;
+    injectStyles();
+
+    var overlay = document.createElement('div');
+    overlay.className = 'bcsp';
+    overlay.innerHTML = template();
+    document.body.appendChild(overlay);
+    var prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+
+    var fill    = overlay.querySelector('.bcsp-fill');
+    var pctEl   = overlay.querySelector('.bcsp-pct');
+    var bootTx  = overlay.querySelector('.bcsp-boot-tx');
+    var cursor  = overlay.querySelector('.bcsp-cur');
+    var rows    = overlay.querySelectorAll('.bcsp-row');
+    var timers  = [];
+    var finished = false;
+    var reduce  = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var boot    = reduce ? null : startBoot(bootTx);
+
+    function finish() {
+      if (finished) return;
+      finished = true;
+      timers.forEach(clearTimeout);
+      overlay.classList.add('bcsp-ready');
+      if (boot) boot.stop('klart — din kostnad ber\xe4knas ✓');
+      else if (bootTx) bootTx.textContent = 'klart — din kostnad ber\xe4knas ✓';
+      if (cursor) cursor.style.display = 'none';
+      if (fill) fill.style.width = '100%';
+      setPct(pctEl, 100);
+      document.documentElement.style.overflow = prevOverflow;
+      timers.push(setTimeout(function () {
+        overlay.classList.add('bcsp-out');
+        setTimeout(function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 540);
+      }, 800));
+      markSeen();
+    }
+
+    overlay.querySelector('.bcsp-skip').addEventListener('click', finish);
+
+    if (reduce) {
+      if (bootTx) bootTx.textContent = 'redo — din kostnad ber\xe4knas';
+      if (cursor) cursor.style.display = 'none';
+      rows.forEach(function (row) {
+        row.classList.add('show', 'done');
+        row.querySelector('.bcsp-st').innerHTML = '<span class="bcsp-check">✓</span>';
+      });
+      animated.cars = true;
+      var cEl = suba(CARS_ROW); if (cEl) cEl.innerHTML = carsText(1);
+      if (fill) fill.style.width = '100%';
+      setPct(pctEl, 100);
+      timers.push(setTimeout(finish, 2200));
+      return;
+    }
+
+    var START = 400, STAGGER = 480, FLIP = 340;
+    rows.forEach(function (row, i) {
+      var appear = START + i * STAGGER;
+      timers.push(setTimeout(function () {
+        row.classList.add('show');
+        if (i === CARS_ROW) animateCars();
+      }, appear));
+      timers.push(setTimeout(function () {
+        row.classList.add('done');
+        row.querySelector('.bcsp-st').innerHTML = '<span class="bcsp-check">✓</span>';
+        var pct = (i + 1) / rows.length * 100;
+        if (fill) fill.style.width = Math.round(pct) + '%';
+        setPct(pctEl, pct);
+        if (i === rows.length - 1) timers.push(setTimeout(finish, 500));
+      }, appear + FLIP));
+    });
+  }
+
+  window.bcReplaySplash = function () {
+    var o = document.querySelector('.bcsp');
+    if (o && o.parentNode) o.parentNode.removeChild(o);
+    animated = {};
+    run();
+  };
+
+  function shouldShow() {
+    if (FORCE) return true;
+    try { return !localStorage.getItem(SEEN_KEY); } catch (e) { return true; }
+  }
+
+  function boot() { if (shouldShow()) run(); }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
