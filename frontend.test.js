@@ -353,52 +353,88 @@ test('demo-räknaren räknar ner från 3 och stannar på 0', () => {
   assert.equal(ctx.bcDemoRemaining(), 0);
 });
 
-test('ca_token räknas som inloggad tills serverkollen sagt sitt', () => {
+test('ett konto UTAN prenumeration ger inte obegränsat — bara demo', () => {
+  // Regressionsvakt för buggen 2026-08-20: åtkomsten gick genom en bcIsLoggedIn() som
+  // bara frågade om det fanns ett token, aldrig om subscriptionStatus. Ett gratiskonto
+  // fick därför obegränsade sökningar — precis det prenumerationen säljer.
   const ctx = createEnv();
-  assert.equal(ctx.bcIsLoggedIn(), false);
+  assert.equal(ctx.bcHasUnlimited(), false);
   ctx.store['ca_token'] = 'nagon-token';
-  assert.equal(ctx.bcIsLoggedIn(), true); // optimistiskt innan bcVerifyLogin svarat
+  assert.equal(ctx.bcHasUnlimited(), false);          // token räcker INTE
+  ctx.store['ca_status'] = 'inactive';
+  assert.equal(ctx.bcHasUnlimited(), false);
+  ctx.store['ca_status'] = 'active';
+  assert.equal(ctx.bcHasUnlimited(), true);           // prenumeration krävs
+});
+
+test('ca_status=active utan giltigt token ger inte tillgång', () => {
+  // Går inte att sätta sig själv förbi vakten: serverkollen underkänner token och
+  // bcAuthValid=false vinner över det cachade statusvärdet.
+  const ctx = createEnv();
+  ctx.store['ca_status'] = 'active';
+  ctx.bcAuthValid = false;
+  assert.equal(ctx.bcHasUnlimited(), false);
 });
 
 test('bcVerifyLogin: 401 rensar token och aktiverar demoläget', async () => {
   const ctx = createEnv({ fetchHandler: () => Promise.resolve({ ok: false, status: 401 }) });
   ctx.store['ca_token'] = 'gammal-token';
   ctx.store['ca_status'] = 'active';
-  assert.equal(ctx.bcIsLoggedIn(), true);
+  assert.equal(ctx.bcHasUnlimited(), true);
   ctx.bcVerifyLogin();
   await tick();
-  assert.equal(ctx.bcIsLoggedIn(), false);
+  assert.equal(ctx.bcHasUnlimited(), false);
   assert.equal(ctx.store['ca_token'], undefined);
   assert.equal(ctx.store['ca_status'], undefined);
   assert.ok(ctx.fetchLog[0].includes('/api/auth/me'));
 });
 
-test('bcVerifyLogin: 200 behåller inloggningen och uppdaterar status', async () => {
+test('bcVerifyLogin: 200 med active ger obegränsat och sparar status', async () => {
   const ctx = createEnv({ fetchHandler: () => jsonResponse({ email: 'a@b.se', subscriptionStatus: 'active' }) });
   ctx.store['ca_token'] = 'giltig-token';
   ctx.bcVerifyLogin();
   await tick();
-  assert.equal(ctx.bcIsLoggedIn(), true);
+  assert.equal(ctx.bcHasUnlimited(), true);
   assert.equal(ctx.store['ca_status'], 'active');
 });
 
-test('bcVerifyLogin: nätverksfel fail open — token får fortsätta gälla', async () => {
+test('bcVerifyLogin: 200 med inactive ger demoläge trots giltigt token', async () => {
+  const ctx = createEnv({ fetchHandler: () => jsonResponse({ email: 'a@b.se', subscriptionStatus: 'inactive' }) });
+  ctx.store['ca_token'] = 'giltig-token';
+  ctx.bcVerifyLogin();
+  await tick();
+  assert.equal(ctx.store['ca_status'], 'inactive');
+  assert.equal(ctx.bcHasUnlimited(), false);
+});
+
+test('bcVerifyLogin: nätverksfel låser inte ute en prenumerant', async () => {
+  // Render kallstartar och /api/auth/me svarar inte. En betalande får inte hamna i
+  // demoläge för det — cachat ca_status får gälla tills servern säger något annat.
+  const ctx = createEnv({ fetchHandler: () => Promise.reject(new Error('offline')) });
+  ctx.store['ca_token'] = 'token';
+  ctx.store['ca_status'] = 'active';
+  ctx.bcVerifyLogin();
+  await tick();
+  assert.equal(ctx.bcHasUnlimited(), true);
+});
+
+test('bcVerifyLogin: nätverksfel ger inte en icke-prenumerant tillgång', async () => {
   const ctx = createEnv({ fetchHandler: () => Promise.reject(new Error('offline')) });
   ctx.store['ca_token'] = 'token';
   ctx.bcVerifyLogin();
   await tick();
-  assert.equal(ctx.bcIsLoggedIn(), true);
+  assert.equal(ctx.bcHasUnlimited(), false);
 });
 
-test('inloggning tar bort demo-felet och aktiverar knappen', () => {
+test('prenumeration tar bort demo-felet och aktiverar knappen', () => {
   const ctx = createEnv();
-  ctx.bcShowError('Du har använt alla 3 demosökningar. Logga in för obegränsad tillgång.');
+  ctx.bcShowError('Du har använt alla 3 demosökningar. Prenumerera för obegränsad tillgång.');
   ctx.els['bc-calcBtn'].disabled = true;
   assert.equal(ctx.els['bc-error'].classList.contains('show'), true);
-  ctx.store['ca_token'] = 'token';   // nu inloggad
+  ctx.store['ca_status'] = 'active';   // nu prenumerant
   ctx.bcUpdateDemoUI();
-  assert.equal(ctx.els['bc-error'].classList.contains('show'), false); // demo-felet borta
-  assert.equal(ctx.els['bc-calcBtn'].disabled, false);                 // knappen aktiv igen
+  assert.equal(ctx.els['bc-error'].classList.contains('show'), false);
+  assert.equal(ctx.els['bc-calcBtn'].disabled, false);
 });
 
 test('demoblockerad beräkning körs om automatiskt efter inloggning', async () => {

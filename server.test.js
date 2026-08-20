@@ -1,5 +1,6 @@
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 
 const { app, fetchPrice, resetCache, warmUpCache, FALLBACK, EL_FALLBACK_SPOT, CACHE_TTL, REWARM_INTERVAL } = require('./server');
 
@@ -228,16 +229,15 @@ test('fetchSpotPrice klarar att morgondagens fil saknas', async () => {
 
 // --- /bensinkostnad.js: Render-serverad kalkylator-frontend ---
 
-test('/bensinkostnad.js serveras med JS-content-type och kort cache', async () => {
+test('/bensinkostnad.js redirectar till CarAdvice i stället för att serveras här', async () => {
+  // Filen serveras av CarAdvice sedan 2026-08-20 — den här tjänsten somnar och
+  // blockerade då hela gränssnittet, eftersom sidans KOD hämtades härifrån.
   const server = app.listen(0);
   try {
     const port = server.address().port;
-    const res = await realFetch(`http://127.0.0.1:${port}/bensinkostnad.js`);
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get('content-type'), /javascript/);
-    assert.match(res.headers.get('cache-control'), /max-age=300/);
-    const text = await res.text();
-    assert.ok(text.includes('bcFetchFastPrice'), 'innehåller kalkylatorkoden');
+    const res = await realFetch(`http://127.0.0.1:${port}/bensinkostnad.js`, { redirect: 'manual' });
+    assert.equal(res.status, 301);
+    assert.equal(res.headers.get('location'), 'https://caradvice.onrender.com/bensinkostnad.js');
   } finally {
     server.close();
   }
@@ -297,4 +297,32 @@ test('warmUpCache sväljer fel — servern startar ändå och nästa anrop hämt
   priceHandler = () => fakeResponse(PAGE_HTML);
   const { body } = await get('/api/fuel-price');
   assert.equal(body._source, 'globalpetrolprices');
+});
+
+// --- Drift-vakt: vår kopia mot den CarAdvice faktiskt serverar ---
+//
+// Filen finns i TVÅ repon och måste vara identisk: CarAdvice serverar den (den här
+// tjänsten somnar och blockerade hela gränssnittet), men de 35 frontend-testerna bor
+// här. En manuell kopiering som glöms bort ger tyst drift — och det hann hända inom
+// timmar första dagen: en vaktfix lades i den serverade kopian medan testerna här
+// fortsatte köra den gamla. Testet gör skillnaden hörbar i stället för tyst.
+//
+// Hoppas över när nätet inte svarar: ett rött bygge för att Render är nere säger
+// ingenting om koden, och en vakt som larmar av fel skäl slutar man läsa.
+test('kopian av kalkylatorn är identisk med den CarAdvice serverar', async (t) => {
+  const URL = 'https://caradvice.onrender.com/bensinkostnad.js';
+  let serverad;
+  try {
+    const res = await realFetch(URL, { signal: AbortSignal.timeout(30000) });
+    if (!res.ok) return t.skip(`CarAdvice svarade ${res.status} — hoppar över`);
+    serverad = await res.text();
+  } catch (e) {
+    return t.skip(`kunde inte nå CarAdvice (${e.message}) — hoppar över`);
+  }
+  const lokal = fs.readFileSync(require.resolve('./src/bensinkostnad-wpcode.js'), 'utf8');
+  // Radslut normaliseras: filen checkas ut med CRLF pa Windows men serveras med LF.
+  const norm = (s) => s.split(String.fromCharCode(13, 10)).join(String.fromCharCode(10));
+  assert.equal(norm(lokal), norm(serverad),
+    'src/bensinkostnad-wpcode.js skiljer sig från den serverade filen — kopiera över till ' +
+    'CarAdvice src/main/resources/static/bensinkostnad.js (eller tvärtom) och deploya');
 });

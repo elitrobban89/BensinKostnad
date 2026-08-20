@@ -60,7 +60,7 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | Fil | Beskrivning |
 |-----|-------------|
 | `src/bensinkostnad-wordpress.html` | HTML + CSS för WordPress Anpassad HTML-block (enda HTML-varianten — äldre generationer är borttagna) |
-| `src/bensinkostnad-wpcode.js` | Kalkylatorns JavaScript — serveras av backenden som `/bensinkostnad.js` (logik, GPS, karta, bildata, prishämtning, jämförelse, CO₂, delbara länkar, laddstopp, milersättning/samåkning/pendling) |
+| `src/bensinkostnad-wpcode.js` | Kalkylatorns JavaScript — **testas här, serveras av CarAdvice.** Filen finns i två repon och måste vara identisk i båda; drift-vakten i `server.test.js` larmar annars |
 | `src/elbilsladdning-promo.html` | Promo-kort för elbilsladdningssidan |
 | `src/projekt-kort.html` | Projekt-kort för hemsidan |
 | `src/bilresa-effekter-wpcode.js` / `.html` / `-shortcode.php` | Effekt-snippets för Bilresa-sidan |
@@ -71,6 +71,13 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | `.github/workflows/node.yml` | CI: syntaxkontroll + testsvit på varje push |
 | `package.json` | Node.js-beroenden |
 | `Dockerfile` | Docker-konfiguration för Render.com |
+
+> **Varför kalkylatorfilen bor på två ställen.** Den *serveras* av CarAdvice därför att den
+> här tjänsten ligger på gratisnivån och somnar — och eftersom WordPress-sidan hämtade sin
+> kod härifrån blockerades hela gränssnittet av kallstarten, inte bara priserna. Den *testas*
+> här därför att vm-harnessen med 38 frontend-tester redan bor här; CarAdvice är ett
+> Maven-projekt utan JS-runner. Uppdelningen är inte snygg, och den kostade tyst drift inom
+> timmar första dagen — därför finns drift-vakten. **Ändrar du filen: ändra i båda repona.**
 
 ---
 
@@ -99,7 +106,7 @@ Ett minimalt Node.js/Express-API körs på `https://bilresa.onrender.com`:
 |----------|-------------|
 | `GET /api/fuel-price` | Returnerar aktuellt bensin95 + dieselpris för Sverige |
 | `GET /api/electricity-price?zone=SE3` | Aktuellt spotpris (SEK/kWh exkl moms) för ett elområde, från elprisetjustnu.se; cachas per zon och timme. Svaret innehåller även `cheapest` — billigaste kommande priset (inkl. morgondagens fil när den publicerats, 15-minupplösning) |
-| `GET /bensinkostnad.js` | Kalkylatorns frontend (`src/bensinkostnad-wpcode.js`) — 5 min cache; WordPress-sidan laddar den via `<script src>` så en git push deployar även frontenden. Kräver `COPY src ./src` i Dockerfilen |
+| `GET /bensinkostnad.js` | **301-redirect till `caradvice.onrender.com/bensinkostnad.js`.** Filen serveras inte härifrån längre: den här tjänsten ligger på Renders gratisnivå och somnar efter ~15 min (uppmätt 2026-08-20: 13,3 s uppvakning mot 0,09 s varm), och eftersom WordPress-sidan hämtade sin *kod* härifrån blockerades hela gränssnittet av kallstarten. Redirecten hjälper inte mot kallstarten — den finns för länkar som pekar hit; snabbt svar kräver att anroparen pekar direkt på CarAdvice |
 | `GET /health` | Hälsokontroll — `priceCache: warm/cold` visar om prisskrapningen fungerar |
 
 - Priset hämtas från globalpetrolprices.com (statisk HTML, uppdateras varje måndag)
@@ -131,11 +138,12 @@ docker run -p 3000:3000 bilresa-server
 - **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
 - **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte, `_source: 'globalpetrolprices-average'` flaggar när reservpriset används (sidlayouten har ändrats)
 - **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, fallback vid nätverksfel eller när prisraden saknas; **billigaste kommande timmen** hittas över dygnsgränsen (morgondagens fil) och saknad morgondagsfil tolereras
-- **`/bensinkostnad.js`** — kalkylatorfrontenden serveras med JS-content-type och 5 min cache
+- **`/bensinkostnad.js`** — svarar 301 mot CarAdvice (filen serveras inte härifrån)
+- **drift-vakten** — hämtar den fil CarAdvice faktiskt serverar och jämför med `src/bensinkostnad-wpcode.js`. Hoppas över när nätet inte svarar; ett rött bygge för att Render är nere säger inget om koden
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå; omvärmningsintervallet rymmer minst två försök per TTL-fönster så ett enstaka hämtningsfel inte ger falskt cold-larm
 
-**Frontend (`frontend.test.js`, 35 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
+**Frontend (`frontend.test.js`, 38 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
 
 - **Elzoner** — latitud → SE1–SE4 (Kiruna/Umeå/Sundsvall/Gävle/Stockholm/Malmö), null → SE3
 - **CO₂** — faktor per bränsleläge; rutan skapas med rätt enhetsetikett (elmix/förbränning)

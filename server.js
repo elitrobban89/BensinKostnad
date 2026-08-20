@@ -1,5 +1,4 @@
 const express = require('express');
-const path = require('path');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -10,15 +9,17 @@ app.use((req, res, next) => {
 });
 
 // ── Kalkylatorns frontend ──────────────────────────────────────────
-// Serveras härifrån så att en git push deployar även JS:et — WordPress-
-// sidan laddar <script src="https://bilresa.onrender.com/bensinkostnad.js">
-// i stället för ett inklistrat WPCode-snippet. Kort cache: utrullning
-// inom 5 min utan att varje sidvisning belastar servern.
-app.get('/bensinkostnad.js', (_, res) => {
-  res.type('application/javascript; charset=utf-8');
-  res.set('Cache-Control', 'public, max-age=300');
-  res.sendFile(path.join(__dirname, 'src', 'bensinkostnad-wpcode.js'));
-});
+// Serveras INTE härifrån längre. Den här tjänsten ligger på Renders gratisnivå
+// och somnar efter ~15 min; mätt 2026-08-20 tog uppvakningen 13,3 s mot 0,09 s
+// varm. Eftersom WordPress-sidan hämtade sin KOD härifrån blockerades hela
+// gränssnittet av kallstarten — inte bara priserna — och användaren fick
+// gateway timeout. CarAdvice ligger på betald plan och somnar aldrig.
+//
+// Redirecten finns kvar för länkar och cachade sidor som pekar hit. Den hjälper
+// dock inte mot kallstarten: ska svaret vara snabbt måste anroparen peka direkt
+// på CarAdvice, vilket WordPress-sidan gör sedan 2026-08-20.
+const KALKYLATOR_URL = 'https://caradvice.onrender.com/bensinkostnad.js';
+app.get('/bensinkostnad.js', (_, res) => res.redirect(301, KALKYLATOR_URL));
 
 // Cache 12 timmar – GlobalPetrolPrices uppdaterar varje måndag
 let cache   = null;

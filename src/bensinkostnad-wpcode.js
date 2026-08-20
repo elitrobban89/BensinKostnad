@@ -1,7 +1,27 @@
-// ═══════════════════════════════════════════════════════
-//  BENSINKOSTNAD – WPCode JavaScript Snippet
-//  Klistra in detta i WPCode → JavaScript Snippet
-// ═══════════════════════════════════════════════════════
+// ── Bränslekostnadsberäkningen — frontend för WordPress-sidan
+//    https://elitrobban.se/branslekostnad-berakning/
+//
+//    ⚠️ DEN HÄR FILEN FINNS I TVÅ REPON OCH MÅSTE VARA IDENTISK I BÅDA.
+//      · CarAdvice  src/main/resources/static/bensinkostnad.js  ← SERVERAS härifrån
+//      · Bilresa    src/bensinkostnad-wpcode.js                 ← TESTAS där (35 tester)
+//
+//    Uppdelningen är inte snygg, men var och en av halvorna har ett skäl:
+//
+//    SERVERAS av CarAdvice därför att Bilresa ligger på Renders gratisnivå och somnar efter
+//    ~15 min. Mätt 2026-08-20: 13,3 s för uppvakningen mot 0,09 s varm. Eftersom sidans KOD
+//    hämtades därifrån blockerades hela gränssnittet av kallstarten — inte bara datan — och
+//    användaren fick gateway timeout. CarAdvice ligger på betald plan och somnar aldrig.
+//
+//    TESTAS i Bilresa därför att testerna redan bor där: frontend.test.js kör filen i en
+//    vm-kontext med DOM-stubb. CarAdvice är ett Maven-projekt utan JS-runner, och att införa
+//    en valdes bort 2026-08-20.
+//
+//    Ändrar du något: ändra i BÅDA. Bilresas server.test.js har ett drift-test som jämför
+//    sin kopia mot den som CarAdvice faktiskt serverar och gör därför skillnaden hörbar.
+//
+//    Filen var ursprungligen ett WPCode-snippet. Den är en extern fil därför att en git push
+//    ska räcka för utrullning OCH därför att inline-skript blockeras av sidans CSP — båda
+//    skälen gäller fortfarande; det enda som ändrats är vilken tjänst som är värd.
 
 // ── Global state ─────────────────────────────────────
 var bcStartLat = null, bcStartLon = null, bcMap = null, bcRouteLayer = null;
@@ -1540,14 +1560,29 @@ function bcVerifyLogin() {
   }).catch(function() {}).then(function() {
     bcUpdateDemoUI();
     // Blev anvandaren blockerad av demogransen och ar nu inloggad? Kor om berakningen.
-    if (bcWasDemoBlocked && bcIsLoggedIn()) { bcWasDemoBlocked = false; bcCalculate(); }
+    if (bcWasDemoBlocked && bcHasUnlimited()) { bcWasDemoBlocked = false; bcCalculate(); }
   });
 }
 
-function bcIsLoggedIn() {
-  if (document.body.classList.contains('logged-in')) return true; // WP-inloggad (sajtägaren)
-  if (bcAuthValid !== null) return bcAuthValid;                   // serververifierat svar vinner
-  return !!localStorage.getItem('ca_token');                      // före verifiering: optimistiskt
+/**
+ * Obegränsad tillgång — kräver AKTIV PRENUMERATION, inte bara ett konto.
+ *
+ * Tidigare styrde en bcIsLoggedIn() åtkomsten, och den frågade bara om det fanns ett giltigt
+ * token. Ett gratiskonto gav därför obegränsade sökningar, alltså precis det prenumerationen
+ * säljer — och demot blev meningslöst för alla som orkade skapa ett konto.
+ *
+ * ca_status skrivs av bcVerifyLogin ur /api/auth/me och av CA_LOGIN-meddelandet. Innan
+ * serverkollen svarat gäller det cachade värdet: en betalande får inte låsas ute för att
+ * Render kallstartar, och en icke-betalande kan inte sätta värdet själv utan att också ha
+ * ett token som servern underkänner vid nästa koll.
+ *
+ * body.logged-in är kvar med flit: det är sajtägarens egen genväg för att kunna testa
+ * kalkylatorn utan att betala. Får sajten fler WordPress-användare blir den en lucka.
+ */
+function bcHasUnlimited() {
+  if (document.body.classList.contains('logged-in')) return true;
+  if (bcAuthValid === false) return false;
+  return localStorage.getItem('ca_status') === 'active';
 }
 function bcDemoRemaining() {
   var used = parseInt(localStorage.getItem('bc_demo_count') || '0', 10);
@@ -1557,7 +1592,7 @@ function bcUpdateDemoUI() {
   var banner   = document.getElementById('bc-demoBanner');
   var loginCta = document.getElementById('bc-loginCta');
 
-  if (bcIsLoggedIn()) {
+  if (bcHasUnlimited()) {
     if (banner)   banner.style.display   = 'none';
     if (loginCta) loginCta.style.display = 'none';
     // Inloggad -> lyft demosparren: aktivera knappen igen och ta bort ett ev.
@@ -1572,6 +1607,28 @@ function bcUpdateDemoUI() {
   if (banner) banner.style.display = 'flex';
 
   var rem = bcDemoRemaining();
+  // Texten byggs HÄR och inte i WordPress-blocket: blocket hade "av 5" hårdkodat medan
+  // BC_DEMO_MAX är 3 (alltså "3 av 5"), och sa "Logga in för obegränsad tillgång" trots att
+  // det är prenumerationen som ger det. Byggd från JS behöver blocket inte klistras om.
+  var text = document.getElementById('bc-demoText');
+  if (!text && banner) {
+    text = document.createElement('span');
+    text.id = 'bc-demoText';
+    var gammal = banner.querySelector('span:not(#bc-demoText)');
+    if (gammal) banner.replaceChild(text, gammal); else banner.appendChild(text);
+  }
+  if (text) {
+    text.innerHTML = 'Demoläge — <strong>' + rem + ' av ' + BC_DEMO_MAX + '</strong> sökningar kvar. '
+      + '<a href="#" id="bc-demoSubLink">Prenumerera</a> för obegränsad tillgång.';
+    // Lyssnare i stället för inline onclick: sidans CSP tillåter inte inline-kod, och
+    // attributet hade dessutom krävt tre lager av citattecken i en JS-byggd sträng.
+    var lank = document.getElementById('bc-demoSubLink');
+    if (lank) lank.addEventListener('click', function(ev) {
+      ev.preventDefault();
+      if (window.bcGuardOpenSubscribe) bcGuardOpenSubscribe();
+      else window.open('https://caradvice.onrender.com/subscribe.html', '_blank', 'width=480,height=650,resizable=yes');
+    });
+  }
   var countEl = document.getElementById('bc-demoCount');
   if (countEl) countEl.textContent = rem;
   var ctaCountEl = document.getElementById('bc-loginCtaCount');
@@ -1592,8 +1649,8 @@ function bcCalculate() {
   document.getElementById('bc-results').classList.remove('show');
 
   // Blockera om demo-gränsen är nådd
-  if (!bcIsLoggedIn() && bcDemoRemaining() === 0) {
-    bcShowError('Du har använt alla ' + BC_DEMO_MAX + ' demosökningar. Logga in för obegränsad tillgång.');
+  if (!bcHasUnlimited() && bcDemoRemaining() === 0) {
+    bcShowError('Du har använt alla ' + BC_DEMO_MAX + ' demosökningar. Prenumerera för obegränsad tillgång.');
     var loginCta = document.getElementById('bc-loginCta');
     if (loginCta) loginCta.style.display = 'flex';
     bcWasDemoBlocked = true; // kom ihag sa vi kan kora om berakningen direkt efter inloggning
@@ -1705,10 +1762,10 @@ function bcDoCalculate(cons, pris) {
   document.getElementById('bc-mapCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   // Räkna upp demo-counter om utloggad
-  if (!bcIsLoggedIn()) {
+  if (!bcHasUnlimited()) {
     bcIncrementDemo();
     if (bcDemoRemaining() === 0) {
-      bcShowError('Du har nu använt alla ' + BC_DEMO_MAX + ' demosökningar. Logga in för obegränsad tillgång.');
+      bcShowError('Du har nu använt alla ' + BC_DEMO_MAX + ' demosökningar. Prenumerera för obegränsad tillgång.');
     }
   }
 }
