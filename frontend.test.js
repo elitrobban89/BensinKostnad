@@ -309,8 +309,8 @@ test('bcRenderComparison visar alternativen med kostnad och CO2', async () => {
   assert.ok(!html.includes('Elbil (hemmaladdning)'));
   // De publika laddpriserna star kvar aven for en elbilsforare: skillnaden mellan att
   // ladda hemma och vid en stolpe ar hela poangen med raderna.
-  assert.ok(html.includes('Elbil (snabbladdning 11 kW)'));
-  assert.ok(html.includes('Elbil (Circle K 400 kW)'));
+  assert.ok(html.includes('Elbil (publik laddning 11 kW)'));   // 11 kW ar AC, inte snabbladdning
+  assert.ok(html.includes('Elbil (snabbladdning Circle K 400 kW)'));
   assert.match(html, /335 kr/);       // 30 x 0,75 x 14,87
   assert.match(html, /304 kr/);       // 30 x 0,60 x 16,87
   assert.match(html, /242 kr/);       // 30 x 1,70 x 4,75
@@ -318,6 +318,9 @@ test('bcRenderComparison visar alternativen med kostnad och CO2', async () => {
   assert.match(html, /53 kg CO/);     // 30 x 0,75 x 2,36
   assert.match(html, /dyrare/);
   assert.match(html, /inte livscykel/);
+  // INGEN rad markeras har: elbilen kostar 130 kr och alla alternativ ar dyrare. En gron
+  // 'bast'-markering bredvid en rod '+86 % dyrare'-badge vore tva motsatta besked.
+  assert.ok(!html.includes('bc-cmp-row best'));
 });
 
 test('bcRenderComparison markerar billigare alternativ med grön badge', async () => {
@@ -332,6 +335,10 @@ test('bcRenderComparison markerar billigare alternativ med grön badge', async (
   const html = ctx.els['bc-compare'].innerHTML;
   assert.match(html, /Elbil \(hemmaladdning\)/);
   assert.match(html, /cheaper/); // elbilen är billigare → grön badge
+  // ...och billigaste raden lyfts fram. Hemmaladdning slar bade publik 11 kW och DC.
+  const best = html.split('bc-cmp-row best')[1] || '';
+  assert.ok(html.includes('bc-cmp-row best'));
+  assert.ok(best.includes('Elbil (hemmaladdning)'));
 });
 
 // ── Bränslelägesbyte ─────────────────────────────────────────────
@@ -499,7 +506,7 @@ test('bcFetchFastPrice faller tillbaka på konstanten vid nätverksfel', async (
   ctx.bcIsElectric = true;
   ctx.bcFetchFastPrice();
   await tick();
-  assert.equal(ctx.els['bc-price'].value, '4.75'); // BC_EL_FAST_AVG
+  assert.equal(ctx.els['bc-price'].value, '5.89'); // BC_EL_FAST_AVG = BC_LADDPRIS.dc400 (snabbladdning)
   assert.match(ctx.els['bc-priceHint'].textContent, /4–7 kr\/kWh/);
 });
 
