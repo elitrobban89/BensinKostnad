@@ -293,7 +293,7 @@ test('bcGetFuelPricesAsync faller tillbaka på fasta priser vid nätverksfel', a
 
 // ── Bränslejämförelsen ───────────────────────────────────────────
 
-test('bcRenderComparison visar de två andra drivmedlen med kostnad och CO₂', async () => {
+test('bcRenderComparison visar alternativen med kostnad och CO2', async () => {
   const ctx = createEnv({
     fetchHandler: url => url.includes('electricity')
       ? jsonResponse({ zone: 'SE3', spot: 1.04 })
@@ -305,10 +305,17 @@ test('bcRenderComparison visar de två andra drivmedlen med kostnad och CO₂', 
   const html = ctx.els['bc-compare'].innerHTML;
   assert.match(html, /Bensinbil/);
   assert.match(html, /Dieselbil/);
-  assert.doesNotMatch(html, /Elbil/); // aktuellt läge visas inte
-  assert.match(html, /335 kr/);       // 30 × 0,75 × 14,87
-  assert.match(html, /304 kr/);       // 30 × 0,60 × 16,87
-  assert.match(html, /53 kg CO₂/);    // 30 × 0,75 × 2,36
+  // Aktuellt lage visas inte - men BARA hemmaladdningsraden ar det aktuella laget.
+  assert.ok(!html.includes('Elbil (hemmaladdning)'));
+  // De publika laddpriserna star kvar aven for en elbilsforare: skillnaden mellan att
+  // ladda hemma och vid en stolpe ar hela poangen med raderna.
+  assert.ok(html.includes('Elbil (snabbladdning 11 kW)'));
+  assert.ok(html.includes('Elbil (Circle K 400 kW)'));
+  assert.match(html, /335 kr/);       // 30 x 0,75 x 14,87
+  assert.match(html, /304 kr/);       // 30 x 0,60 x 16,87
+  assert.match(html, /242 kr/);       // 30 x 1,70 x 4,75
+  assert.match(html, /300 kr/);       // 30 x 1,70 x 5,89
+  assert.match(html, /53 kg CO/);     // 30 x 0,75 x 2,36
   assert.match(html, /dyrare/);
   assert.match(html, /inte livscykel/);
 });
