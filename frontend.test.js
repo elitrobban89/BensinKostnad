@@ -320,7 +320,7 @@ test('bcRenderComparison visar alternativen med kostnad och CO2', async () => {
   assert.match(html, /inte livscykel/);
   // INGEN rad markeras har: elbilen kostar 130 kr och alla alternativ ar dyrare. En gron
   // 'bast'-markering bredvid en rod '+86 % dyrare'-badge vore tva motsatta besked.
-  assert.ok(!html.includes('bc-cmp-row best'));
+  assert.ok(!html.includes(' best">'));
 });
 
 test('bcRenderComparison markerar billigare alternativ med grön badge', async () => {
@@ -336,8 +336,8 @@ test('bcRenderComparison markerar billigare alternativ med grön badge', async (
   assert.match(html, /Elbil \(hemmaladdning\)/);
   assert.match(html, /cheaper/); // elbilen är billigare → grön badge
   // ...och billigaste raden lyfts fram. Hemmaladdning slar bade publik 11 kW och DC.
-  const best = html.split('bc-cmp-row best')[1] || '';
-  assert.ok(html.includes('bc-cmp-row best'));
+  const best = html.split(' best">')[1] || '';
+  assert.ok(html.includes(' best">'));
   assert.ok(best.includes('Elbil (hemmaladdning)'));
 });
 
