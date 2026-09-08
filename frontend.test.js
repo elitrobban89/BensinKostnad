@@ -34,7 +34,8 @@ function createEnv(opts) {
       tagName: (tag || 'div').toUpperCase(),
       _id: '', _html: '', value: '', checked: false, disabled: false,
       textContent: '', placeholder: '',
-      style: {}, children: [], listeners: {},
+      style: { setProperty(k, v) { this[k] = v; }, removeProperty(k) { delete this[k]; } },
+      children: [], listeners: {},
       options: { length: 1 },
       classList: {
         _s: new Set(),
@@ -52,7 +53,8 @@ function createEnv(opts) {
       insertBefore(c) { this.children.push(c); return c; },
       insertAdjacentElement(_pos, c) { this.children.push(c); return c; },
       querySelector() { return null; },
-      setAttribute() {}, remove() {}, scrollIntoView() {}, select() {},
+      setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
+      remove() {}, scrollIntoView() {}, select() {},
       closest() { return null; },
       get parentNode() { return bodyEl; }
     };
@@ -66,6 +68,9 @@ function createEnv(opts) {
       get() { return this._html; },
       set(v) {
         this._html = String(v);
+        // Som i riktig DOM: innerHTML ERSÄTTER innehållet. Utan det låg gamla
+        // <option>-element kvar i children och en filtrerad modellista såg ofiltrerad ut.
+        this.children.length = 0;
         for (const m of this._html.matchAll(/id="([^"]+)"/g)) {
           if (!els[m[1]]) els[m[1]] = makeEl();
         }
@@ -353,6 +358,137 @@ test('bcSetFuelMode rensar priset vid byte el ↔ fossilt men inte bensin ↔ di
   ctx.els['bc-price'].value = '2.55';
   ctx.bcSetFuelMode('petrol');            // el → fossil: rensa
   assert.equal(ctx.els['bc-price'].value, '');
+});
+
+// ── Bilväljaren: bränslefilter, ihopfälld märkesruta, grupperad modellista ──
+
+// Hämtar alla <option>-värden ur modellistan, även de som ligger i en optgroup.
+function modellVarden(sel) {
+  const ut = [];
+  sel.children.forEach(barn => {
+    if (barn.tagName === 'OPTGROUP') barn.children.forEach(o => ut.push(o.value));
+    else ut.push(barn.value);
+  });
+  return ut;
+}
+function gruppEtiketter(sel) {
+  return sel.children.filter(b => b.tagName === 'OPTGROUP').map(g => g.label);
+}
+
+test('bcModellfamilj slår ihop BMW-serier och delar Range Rover, men rör inte 308', () => {
+  const ctx = createEnv();
+  assert.equal(ctx.bcModellfamilj('BMW', '320i 2.0 T 184 hk'), '3-serie');
+  assert.equal(ctx.bcModellfamilj('BMW', '118d 2.0 D 150 hk (diesel)'), '1-serie');
+  assert.equal(ctx.bcModellfamilj('BMW', 'M135i xDrive 306 hk'), '1-serie');
+  assert.equal(ctx.bcModellfamilj('BMW', 'M3 Competition 510 hk'), '3-serie');
+  assert.equal(ctx.bcModellfamilj('BMW', 'X5 xDrive40i 340 hk'), 'X5');   // ingen sifferserie
+  assert.equal(ctx.bcModellfamilj('Tesla', 'Model 3 Long Range AWD (el)'), 'Model 3');
+  assert.equal(ctx.bcModellfamilj('Tesla', 'Model Y Performance (el)'), 'Model Y');
+  assert.equal(ctx.bcModellfamilj('Mazda', 'Mazda 3 2.0 Skyactiv-G 122 hk'), 'Mazda 3');
+  assert.equal(ctx.bcModellfamilj('Mazda', 'CX-5 2.5 Turbo 230 hk'), 'CX-5');
+  assert.equal(ctx.bcModellfamilj('Land Rover', 'Range Rover Evoque PHEV 309 hk'), 'Range Rover Evoque');
+  assert.equal(ctx.bcModellfamilj('Land Rover', 'Range Rover 3.0 P360 360 hk'), 'Range Rover');
+  // Peugeots 308 är en modell, inte en BMW-serie — regeln får inte läcka mellan märken
+  assert.equal(ctx.bcModellfamilj('Peugeot', '308 1.2 PureTech 130 hk'), '308');
+  assert.equal(ctx.bcModellfamilj('Porsche', '911 Carrera 3.0 385 hk'), '911');
+});
+
+test('bränslevalet filtrerar både märkeslistan och modellistan', () => {
+  const ctx = createEnv();
+  const elMarken = ctx.bcMarkenForBransle('electric');
+  assert.ok(elMarken.includes('Tesla'));
+  assert.ok(!elMarken.includes('Abarth'));           // Abarth har ingen elbil alls
+  assert.ok(ctx.bcMarkenForBransle('diesel').includes('Volvo'));
+  assert.ok(!ctx.bcMarkenForBransle('diesel').includes('Tesla'));
+  ctx.bcModellerForBransle('Volvo', 'diesel').forEach(m => assert.match(m, /\(diesel\)/));
+  ctx.bcModellerForBransle('Volvo', 'petrol').forEach(m => assert.doesNotMatch(m, /\((el|diesel)\)/));
+});
+
+test('modellistan visar bara valt bränsle, grupperat per familj och utan suffix', () => {
+  const ctx = createEnv();
+  ctx.bcIsElectric = false; ctx.bcIsDiesel = true;
+  ctx.bcFyllModeller('Volvo', '');
+  const model = ctx.els['bc-model'];
+  const varden = modellVarden(model);
+  assert.ok(varden.length > 0);
+  varden.forEach(v => assert.match(v, /\(diesel\)/));          // värdet bär drivmedlet
+  const grupper = gruppEtiketter(model);
+  assert.ok(grupper.includes('XC60'), 'familjerubrik saknas: ' + grupper.join(','));
+  // Etiketten är avskalad — bränslet står redan på knappen ovanför
+  const etiketter = model.children
+    .filter(b => b.tagName === 'OPTGROUP')
+    .flatMap(g => g.children.map(o => o.textContent));
+  etiketter.forEach(t => assert.doesNotMatch(t, /\(diesel\)/));
+  assert.equal(model.disabled, false);
+});
+
+test('kort modellista med en enda familj grupperas inte', () => {
+  const ctx = createEnv();
+  ctx.bcIsElectric = false; ctx.bcIsDiesel = false;
+  ctx.bcFyllModeller('Abarth', '');
+  assert.deepEqual(gruppEtiketter(ctx.els['bc-model']), []);
+  assert.equal(modellVarden(ctx.els['bc-model']).length, 5);
+});
+
+test('byte till el släpper märke, modell och förbrukning som inte finns i elläget', () => {
+  const ctx = createEnv({ fetchHandler: () => jsonResponse({ zone: 'SE3', spot: 1.04 }) });
+  ctx.els['bc-brand'].value = 'Abarth';
+  ctx.bcOnBrandChange();
+  ctx.els['bc-model'].value = '500 1.4 T-Jet 135 hk';
+  ctx.bcOnModelChange();
+  assert.equal(ctx.els['bc-cons'].value, 0.72);
+
+  ctx.bcSetFuelMode('electric');
+  ctx.bcApplyFuelFilter();
+  assert.equal(ctx.els['bc-brand'].value, '');       // Abarth har ingen elbil
+  assert.equal(ctx.els['bc-model'].value, '');
+  assert.equal(ctx.els['bc-model'].disabled, true);
+  assert.equal(ctx.els['bc-cons'].value, '');        // 0,72 l/mil får inte stå kvar som kWh
+});
+
+test('märket överlever bränslebytet när det finns i båda — modellen gör det inte', () => {
+  const ctx = createEnv({ fetchHandler: () => jsonResponse({ zone: 'SE3', spot: 1.04 }) });
+  ctx.els['bc-brand'].value = 'Volvo';
+  ctx.bcOnBrandChange();
+  ctx.els['bc-model'].value = 'XC60 B4 AWD 197 hk';
+  ctx.bcOnModelChange();
+
+  ctx.bcSetFuelMode('diesel');
+  ctx.bcApplyFuelFilter();
+  assert.equal(ctx.els['bc-brand'].value, 'Volvo');
+  assert.equal(ctx.els['bc-model'].value, '');
+  modellVarden(ctx.els['bc-model']).forEach(v => assert.match(v, /\(diesel\)/));
+});
+
+test('valt märke fäller ihop märkesrutan, "Byt märke" fäller ut den igen', () => {
+  const ctx = createEnv();
+  ctx.bcInitBrands();
+  const rutnat = ctx.els['bc-brandGrid'];
+  const knapp  = ctx.els['bc-brandToggle'];
+  assert.equal(rutnat.style.display, '');            // inget valt → rutan öppen
+  assert.equal(knapp.style.display, 'none');
+
+  ctx.els['bc-brand'].value = 'Volvo';
+  ctx.bcOnBrandChange();
+  assert.equal(rutnat.style.display, 'none');        // "Volvo" står kvar i select:en
+  assert.equal(knapp.style.display, '');
+  assert.equal(knapp.textContent, 'Byt märke');
+
+  ctx.bcMarkesrutanOppen = true;
+  ctx.bcRenderBrandGrid();
+  assert.equal(rutnat.style.display, '');
+  assert.equal(knapp.textContent, 'Dölj märkeslistan');
+});
+
+test('bcInitBrands fyller märkeslistan efter bränsle och nollar ett märke som fallit bort', () => {
+  const ctx = createEnv();
+  ctx.els['bc-brand'].value = 'Abarth';
+  ctx.bcIsElectric = true;
+  ctx.bcInitBrands();
+  assert.equal(ctx.els['bc-brand'].value, '');
+  const lagda = ctx.els['bc-brand'].children.map(o => o.value);
+  assert.ok(lagda.includes('Tesla'));
+  assert.ok(!lagda.includes('Abarth'));
 });
 
 // ── Demo-räknaren ────────────────────────────────────────────────
