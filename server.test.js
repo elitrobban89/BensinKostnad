@@ -173,6 +173,44 @@ test('/api/electricity-price hämtar rätt zon och gemener normaliseras', async 
   assert.equal(body.spot, 1.10);
 });
 
+test('/api/electricity-price?zone=alla returnerar alla fyra elområden', async () => {
+  elHandler = (url) => {
+    const zon = url.match(/_(SE\d)\.json$/)[1];
+    return fakeJsonResponse(elHours({ SE1: 0.21, SE2: 0.24, SE3: 0.58, SE4: 0.94 }[zon]));
+  };
+  const { status, body } = await get('/api/electricity-price?zone=alla');
+  assert.equal(status, 200);
+  assert.equal(body._source, 'elprisetjustnu');
+  assert.equal(body.zones.length, 4);
+  const per = Object.fromEntries(body.zones.map(z => [z.zone, z.spot]));
+  assert.equal(per.SE1, 0.21);
+  assert.equal(per.SE4, 0.94);
+});
+
+test('/api/electricity-price?zone=alla utelämnar zoner som fallerar', async () => {
+  // Schablonen 0,80 får ALDRIG smyga in i zonlistan: en spridning räknad mellan en hämtad
+  // och en gissad siffra ser ut som en mätning men är det inte.
+  elHandler = (url) => {
+    if (/_SE4\.json$/.test(url)) throw new Error('nere');
+    return fakeJsonResponse(elHours(0.30));
+  };
+  const { status, body } = await get('/api/electricity-price?zone=alla');
+  assert.equal(status, 200);
+  assert.equal(body.zones.length, 3);
+  assert.ok(!body.zones.some(z => z.zone === 'SE4'));
+  assert.ok(!body.zones.some(z => z.spot === 0.80));
+});
+
+test('/api/electricity-price?zone=alla svarar 503 när färre än två zoner går att hämta', async () => {
+  elHandler = (url) => {
+    if (/_SE1\.json$/.test(url)) return fakeJsonResponse(elHours(0.30));
+    throw new Error('nere');
+  };
+  const { status, body } = await get('/api/electricity-price?zone=alla');
+  assert.equal(status, 503);
+  assert.match(body.error, /F.rre .n tv./);
+});
+
 test('/api/electricity-price avvisar ogiltig zon med 400', async () => {
   const { status, body } = await get('/api/electricity-price?zone=SE9');
   assert.equal(status, 400);

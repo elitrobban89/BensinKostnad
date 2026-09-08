@@ -127,18 +127,48 @@ async function fetchSpotPrice(zone, now = new Date()) {
   return out;
 }
 
+/**
+ * Alla fyra elområden i ETT anrop.
+ *
+ * Finns för att jämföra zoner mot varandra (Elbilsladdnings faktakarusell visar spridningen
+ * norr–söder). Fyra separata anrop från en webbläsare till en tjänst som somnar hade betytt
+ * fyra kallstarter; här delar de på uppvakningen och på timcachen.
+ *
+ * Zoner som INTE gick att hämta utelämnas — de får aldrig fyllas med schablonen 0,80, för då
+ * blir en spridning mellan två gissningar presenterad som en mätning. Går färre än två zoner
+ * att hämta svarar vi 503 så anroparen kan tiga i stället för att visa en halv sanning.
+ */
+async function allaZoner() {
+  const svar = await Promise.allSettled(EL_ZONES.map(z => hamtaZonMedCache(z)));
+  return svar
+    .filter(r => r.status === 'fulfilled' && r.value && r.value._source === 'elprisetjustnu')
+    .map(r => ({ zone: r.value.zone, spot: r.value.spot, updated: r.value.updated }));
+}
+
+/** Delad av bägge vägarna så timcachen gäller lika för en zon som för alla fyra. */
+async function hamtaZonMedCache(zone) {
+  const hourKey = new Date().toISOString().slice(0, 13);
+  const hit = elCache[zone];
+  if (hit && hit.hourKey === hourKey) return hit.data;
+  const data = await fetchSpotPrice(zone);
+  elCache[zone] = { hourKey, data };
+  return data;
+}
+
 app.get('/api/electricity-price', async (req, res) => {
   const zone = String(req.query.zone || 'SE3').toUpperCase();
+  if (zone === 'ALLA') {
+    const zoner = await allaZoner();
+    if (zoner.length < 2) {
+      return res.status(503).json({ error: 'Färre än två elområden kunde hämtas' });
+    }
+    return res.json({ zones: zoner, _source: 'elprisetjustnu' });
+  }
   if (!EL_ZONES.includes(zone)) {
     return res.status(400).json({ error: 'Ogiltig zon — använd SE1, SE2, SE3 eller SE4' });
   }
-  const hourKey = new Date().toISOString().slice(0, 13);
-  const hit = elCache[zone];
-  if (hit && hit.hourKey === hourKey) return res.json(hit.data);
   try {
-    const data = await fetchSpotPrice(zone);
-    elCache[zone] = { hourKey, data };
-    res.json(data);
+    res.json(await hamtaZonMedCache(zone));
   } catch (err) {
     console.warn('Elprishämtning misslyckades, använder fallback:', err.message);
     res.json({ zone, spot: EL_FALLBACK_SPOT, _source: 'fallback' });
