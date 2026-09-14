@@ -66,8 +66,8 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | `src/bilresa-effekter-wpcode.js` / `.html` / `-shortcode.php` | Effekt-snippets för Bilresa-sidan |
 | `src/hemssida-effekter-wpcode.js` | Effekt-snippet för startsidan |
 | `server.js` | Node.js/Express backend — bränsle- och elpris-API + serverar kalkylatorfrontenden (`/bensinkostnad.js`) |
-| `server.test.js` | Backend-testsvit (23 tester) |
-| `frontend.test.js` | Frontend-testsvit — kör kalkylator-JS:et i DOM-stubbad vm-kontext (35 tester) |
+| `server.test.js` | Backend-testsvit (27 tester) |
+| `frontend.test.js` | Frontend-testsvit — kör kalkylator-JS:et i DOM-stubbad vm-kontext (46 tester) |
 | `.github/workflows/node.yml` | CI: syntaxkontroll + testsvit på varje push |
 | `package.json` | Node.js-beroenden |
 | `Dockerfile` | Docker-konfiguration för Render.com |
@@ -75,7 +75,7 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 > **Varför kalkylatorfilen bor på två ställen.** Den *serveras* av CarAdvice därför att den
 > här tjänsten ligger på gratisnivån och somnar — och eftersom WordPress-sidan hämtade sin
 > kod härifrån blockerades hela gränssnittet av kallstarten, inte bara priserna. Den *testas*
-> här därför att vm-harnessen med 38 frontend-tester redan bor här; CarAdvice är ett
+> här därför att vm-harnessen med 46 frontend-tester redan bor här; CarAdvice är ett
 > Maven-projekt utan JS-runner. Uppdelningen är inte snygg, och den kostade tyst drift inom
 > timmar första dagen — därför finns drift-vakten. **Ändrar du filen: ändra i båda repona.**
 
@@ -131,9 +131,9 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-58 tester med Nodes inbyggda testrunner — inga extra beroenden.
+73 tester med Nodes inbyggda testrunner — inga extra beroenden.
 
-**Backend (`server.test.js`, 23 st):**
+**Backend (`server.test.js`, 27 st):**
 
 - **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
 - **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte, `_source: 'globalpetrolprices-average'` flaggar när reservpriset används (sidlayouten har ändrats)
@@ -143,7 +143,7 @@ docker run -p 3000:3000 bilresa-server
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå; omvärmningsintervallet rymmer minst två försök per TTL-fönster så ett enstaka hämtningsfel inte ger falskt cold-larm
 
-**Frontend (`frontend.test.js`, 38 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
+**Frontend (`frontend.test.js`, 46 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
 
 - **Elzoner** — latitud → SE1–SE4 (Kiruna/Umeå/Sundsvall/Gävle/Stockholm/Malmö), null → SE3
 - **CO₂** — faktor per bränsleläge; rutan skapas med rätt enhetsetikett (elmix/förbränning)
