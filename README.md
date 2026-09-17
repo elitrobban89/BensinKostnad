@@ -131,7 +131,7 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-73 tester med Nodes inbyggda testrunner — inga extra beroenden.
+74 tester med Nodes inbyggda testrunner — inga extra beroenden.
 
 **Backend (`server.test.js`, 27 st):**
 
@@ -143,7 +143,7 @@ docker run -p 3000:3000 bilresa-server
 - **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå; omvärmningsintervallet rymmer minst två försök per TTL-fönster så ett enstaka hämtningsfel inte ger falskt cold-larm
 
-**Frontend (`frontend.test.js`, 46 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
+**Frontend (`frontend.test.js`, 47 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
 
 - **Elzoner** — latitud → SE1–SE4 (Kiruna/Umeå/Sundsvall/Gävle/Stockholm/Malmö), null → SE3
 - **CO₂** — faktor per bränsleläge; rutan skapas med rätt enhetsetikett (elmix/förbränning)
@@ -156,7 +156,7 @@ docker run -p 3000:3000 bilresa-server
 - **Laddstopp** — hämtas och visas med station/effekt/pris; hoppas över för korta resor och fossilläge; döljs när inga stopp behövs
 - **Jämförelsen** — visar de två andra drivmedlen med rätt kostnad/CO₂ och billigare/dyrare-badge
 - **Lägesbyte** — priset rensas vid el ↔ fossilt men behålls bensin ↔ diesel
-- **Demo-räknaren & inloggningen** — 3 → 0, stannar på 0; `ca_token` räknas optimistiskt som inloggad tills `bcVerifyLogin` fått svar från CarAdvice `/api/auth/me` (samma konto som Bilrådgivningen/Elbilsladdning): 401 rensar tokenen och aktiverar demoläget, 200 behåller inloggningen och uppdaterar `ca_status`, nätverksfel fail open
+- **Demo-räknaren & inloggningen** — `BC_DEMO_MAX` → 0, stannar på 0, och sökningar äldre än `BC_DEMO_WINDOW_MS` räknas inte med (gränsen gäller per timme). Talen läses ur konstanterna: provet hårdkodade 3, och stod rött från den dag gränsen höjdes till 30 — ett rött prov som inte visste något om koden men ändå tystade hela sviten; `ca_token` räknas optimistiskt som inloggad tills `bcVerifyLogin` fått svar från CarAdvice `/api/auth/me` (samma konto som Bilrådgivningen/Elbilsladdning): 401 rensar tokenen och aktiverar demoläget, 200 behåller inloggningen och uppdaterar `ca_status`, nätverksfel fail open
 - **`bcDoCalculate`** — hela kedjan med returresa: mil, liter, kostnad, CO₂ och dela-knappen
 
 ```bash

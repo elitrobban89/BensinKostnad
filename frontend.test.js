@@ -143,6 +143,15 @@ function jsonResponse(data) {
   return Promise.resolve({ ok: true, json: async () => data });
 }
 
+// Priskällorna har OLIKA svarsformer och koden läser fälten direkt (data.bensin95 kontra
+// data.spot). En fetchHandler som ger samma objekt åt varenda adress testar därför en värld
+// som inte finns — och tystnaden blir inte tyst: bränslepriset blev undefined och
+// undefined.toFixed kastade EFTER provets slut, vilket node räknar som uncaughtException
+// och fäller hela filen fast varje enskilt prov är grönt.
+const prisSvar = (url) => url.indexOf('/api/electricity-price') !== -1
+  ? jsonResponse({ zone: 'SE3', spot: 1.04 })
+  : jsonResponse({ bensin95: 18.54, diesel: 23.04, updated: '2026-09-17', _source: 'globalpetrolprices' });
+
 // Vänta ut promise-kedjor (jämförelsen renderar asynkront)
 const tick = () => new Promise(r => setTimeout(r, 20));
 
@@ -431,7 +440,7 @@ test('kort modellista med en enda familj grupperas inte', () => {
 });
 
 test('byte till el släpper märke, modell och förbrukning som inte finns i elläget', () => {
-  const ctx = createEnv({ fetchHandler: () => jsonResponse({ zone: 'SE3', spot: 1.04 }) });
+  const ctx = createEnv({ fetchHandler: prisSvar });
   ctx.els['bc-brand'].value = 'Abarth';
   ctx.bcOnBrandChange();
   ctx.els['bc-model'].value = '500 1.4 T-Jet 135 hk';
@@ -447,7 +456,9 @@ test('byte till el släpper märke, modell och förbrukning som inte finns i ell
 });
 
 test('märket överlever bränslebytet när det finns i båda — modellen gör det inte', () => {
-  const ctx = createEnv({ fetchHandler: () => jsonResponse({ zone: 'SE3', spot: 1.04 }) });
+  // Bränslebytet startar ett prisanrop (bcFetchFuelPrice via setTimeout 0), så stubben
+  // måste svara med BRÄNSLEformen här — se prisSvar.
+  const ctx = createEnv({ fetchHandler: prisSvar });
   ctx.els['bc-brand'].value = 'Volvo';
   ctx.bcOnBrandChange();
   ctx.els['bc-model'].value = 'XC60 B4 AWD 197 hk';
@@ -493,14 +504,29 @@ test('bcInitBrands fyller märkeslistan efter bränsle och nollar ett märke som
 
 // ── Demo-räknaren ────────────────────────────────────────────────
 
-test('demo-räknaren räknar ner från 3 och stannar på 0', () => {
+// Talet läses ur BC_DEMO_MAX, aldrig hårdkodat: provet skrevs när gränsen var 3 och blev
+// rött den dag den höjdes till 30 — ett rött prov som inte visste något om koden, men som
+// ändå tystade hela sviten. Samma sak gäller fönstret: gränsen gäller PER TIMME sedan
+// BC_DEMO_WINDOW_MS infördes, så en räknare som bara summerar antal mäter fel sak.
+test('demo-räknaren räknar ner från BC_DEMO_MAX och stannar på 0', () => {
   const ctx = createEnv();
-  assert.equal(ctx.bcDemoRemaining(), 3);
+  const max = ctx.BC_DEMO_MAX;
+  assert.equal(ctx.bcDemoRemaining(), max);
   ctx.bcIncrementDemo();
   ctx.bcIncrementDemo();
-  assert.equal(ctx.bcDemoRemaining(), 1);
-  for (let i = 0; i < 10; i++) ctx.bcIncrementDemo();
+  assert.equal(ctx.bcDemoRemaining(), max - 2);
+  for (let i = 0; i < max + 5; i++) ctx.bcIncrementDemo();
   assert.equal(ctx.bcDemoRemaining(), 0);
+});
+
+test('demosökningar äldre än fönstret räknas inte med', () => {
+  const ctx = createEnv();
+  const max = ctx.BC_DEMO_MAX;
+  const utanfor = Date.now() - ctx.BC_DEMO_WINDOW_MS - 1000;
+  ctx.store['bc_demo_times'] = JSON.stringify(new Array(max).fill(utanfor));
+  assert.equal(ctx.bcDemoRemaining(), max);   // timmen har passerat — alla har åldrats ut
+  ctx.bcIncrementDemo();
+  assert.equal(ctx.bcDemoRemaining(), max - 1);
 });
 
 test('ett konto UTAN prenumeration ger inte obegränsat — bara demo', () => {
@@ -592,7 +618,7 @@ test('demoblockerad beräkning körs om automatiskt efter inloggning', async () 
     url.indexOf('/api/auth/me') !== -1
       ? jsonResponse({ email: 'a@b.se', subscriptionStatus: 'active' })
       : jsonResponse({}) });
-  for (let i = 0; i < 3; i++) ctx.bcIncrementDemo();  // fyll demogränsen
+  for (let i = 0; i < ctx.BC_DEMO_MAX; i++) ctx.bcIncrementDemo();  // fyll demogränsen
   ctx.bcCalculate();                                  // blockeras
   assert.equal(ctx.bcWasDemoBlocked, true);
   ctx.store['ca_token'] = 'token';                    // logga in
