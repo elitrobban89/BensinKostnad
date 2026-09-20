@@ -1,3 +1,4 @@
+/* Bilresa — (c) 2026 Robert Andersson Kopler. Alla rattigheter forbehallna. */
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('vm');

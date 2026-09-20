@@ -192,7 +192,21 @@ Klistra in hela innehållet från `bensinkostnad-wordpress.html` i ett **Anpassa
 Leaflet laddas automatiskt via CDN i HTML-blocket — ingen extra installation krävs.
 
 ---
+## Upphovsrätt och användning
 
-## Licens
+Copyright © 2026 Robert Andersson Kopler. Alla rättigheter förbehållna.
 
-MIT
+Koden är märkt med upphovsmannens namn överst i varje JS-, HTML- och PHP-fil, i `NOTICE`
+och i git-historiken, som är den daterade källan.
+
+**Du får** läsa koden, köra den lokalt, lära av den och låta dig inspireras av den i egna
+studie- och portföljprojekt.
+
+**Du får inte** sprida den vidare som din egen, publicera kopior av den, eller använda den —
+helt eller delvis — i kommersiellt syfte eller i en tjänst som konkurrerar med denna.
+
+Vill du använda något härifrån utanför de ramarna går det ofta bra — fråga först.
+
+Att ta bort märkningen ur källkoden är tekniskt möjligt för den som har koden. Det som
+skyddar upphovet är upphovsrätten och git-historiken; lagren ovan finns för att göra ett
+intrång arbetsamt och synligt, inte omöjligt.

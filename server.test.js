@@ -1,3 +1,4 @@
+/* Bilresa — (c) 2026 Robert Andersson Kopler. Alla rattigheter forbehallna. */
 const { test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');

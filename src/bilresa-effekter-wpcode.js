@@ -1,3 +1,4 @@
+/* Bilresa — (c) 2026 Robert Andersson Kopler. Alla rattigheter forbehallna. */
 // ═══════════════════════════════════════════════════════
 //  BRÄNSLEKOSTNAD – Visuella effekter på sidan
 //  WPCode → JavaScript Snippet → Kör bara på sidan

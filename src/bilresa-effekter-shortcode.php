@@ -1,4 +1,5 @@
 <?php
+/* Bilresa — (c) 2026 Robert Andersson Kopler. Alla rattigheter forbehallna. */
 // ═══════════════════════════════════════════════════════
 //  BRÄNSLEKOSTNAD – Sidtitel-effekt
 //  WPCode → PHP Snippet

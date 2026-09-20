@@ -1,3 +1,4 @@
+/* Bilresa — (c) 2026 Robert Andersson Kopler. Alla rattigheter forbehallna. */
 const express = require('express');
 
 const app  = express();
