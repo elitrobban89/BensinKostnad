@@ -8,6 +8,9 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 
 ## Funktioner
 
+- **Aurora bakom kalkylatorn och glaspanel** (2026-09-27) — WordPress-sektionen bakom appen (förut vit) får en mättad aurora i bärnsten, rosa, violett och cyan som driver och skiftar; appens panel blir frostat glas med vandrande färgkant och pulserande färgsken, korten inuti är vita som förut. Första försöket gjorde korten till glas och lades inne i appen — fel yta, och appen var bättre förut
+- **Glasknappen "Räkna ut kostnaden"** — samma designspråk som bilrådgivningens "Hitta min bil" (lila→indigo, 14 px, glansstråk) plus välvd glasreflex, mörkare botten och samma färgkant; glansen sveper av sig själv eftersom en telefon inte har hovring
+- **Scrollar till resultatet** efter beräkningen — förut scrollades kartan till "närmaste" läge och resultatet låg ofta kvar under kanten; `scroll-margin-top` håller rubriken fri från temats huvud
 - **Stöd för bensin, diesel och el** — väljer rätt enheter och formel automatiskt baserat på fordonstyp
 - **Automatisk bränsleprishämtning** — hämtar aktuellt bensin/dieselpris från [globalpetrolprices.com](https://www.globalpetrolprices.com/Sweden/) via Bilresa-backend; cachas 6 timmar i localStorage
 - **Automatiskt elpris** — spotpriset hämtas från [elprisetjustnu.se](https://www.elprisetjustnu.se) för rätt elområde (SE1–SE4 väljs via GPS-latitud); fältet fylls med ett uppskattat hemmaladdningspris (spot × 1,25 moms + schablon 1,25 kr för energiskatt, nätavgift och påslag), cachas 1 timme. Hinten tipsar om **billigaste kommande laddtimmen** (även över dygnsgränsen när morgondagens priser publicerats) när den är >10 % billigare än nu
