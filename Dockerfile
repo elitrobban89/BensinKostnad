@@ -1,7 +1,7 @@
-FROM node:20-slim
+FROM node:24-slim
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --only=production
+RUN npm ci --omit=dev
 COPY server.js .
 COPY src ./src
 EXPOSE 3000

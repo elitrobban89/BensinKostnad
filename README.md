@@ -94,7 +94,7 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | [Nominatim](https://nominatim.org) | Geocoding + adressautocomplete |
 | [OSRM](http://router.project-osrm.org) | Ruttberäkning |
 | [elprisetjustnu.se](https://www.elprisetjustnu.se) | Spotpris el per elområde (öppet API) |
-| Node.js + Express | Bilresa backend (bilresa.onrender.com) |
+| Node.js 24 + Express 5 | Bilresa backend (bilresa.onrender.com) |
 | [globalpetrolprices.com](https://www.globalpetrolprices.com) | Bränsleprisdata (scraping, uppdateras varje måndag) |
 | WordPress | CMS — kalkylatorn bor i ett Anpassad HTML-block som laddar JS:et från backenden (WPCode avvecklat 2026-07-14) |
 | Docker + Render.com | Backend-hosting |
