@@ -301,8 +301,15 @@ test('/api/electricity-price faller tillbaka när ingen rad täcker aktuell timm
 test('/health svarar OK och CORS-headern är satt', async () => {
   const { status, headers, body } = await get('/health');
   assert.equal(status, 200);
-  assert.deepEqual(body, { status: 'OK', priceCache: 'cold' });
+  assert.deepEqual(body, { status: 'OK', priceCache: 'cold', node: process.versions.node,
+                           express: require('express/package.json').version });
   assert.equal(headers.get('access-control-allow-origin'), '*');
+});
+
+test('/health visar versionerna splashen läser — Node 24 och Express 5', async () => {
+  const { body } = await get('/health');
+  assert.match(body.node, /^24\./);
+  assert.match(body.express, /^5\./);
 });
 
 test('/health rapporterar warm när priscachen är fylld', async () => {

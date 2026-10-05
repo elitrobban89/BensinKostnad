@@ -1,5 +1,6 @@
 /* Bilresa — (c) 2026 Robert Andersson Kopler. Alla rattigheter forbehallna. */
 const express = require('express');
+const EXPRESS_VERSION = require('express/package.json').version;
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -177,10 +178,14 @@ app.get('/api/electricity-price', async (req, res) => {
 });
 
 // priceCache: 'warm'/'cold' — UptimeRobot-nyckelordsövervakning kan larma
-// om skrapningen slutat fungera, inte bara om servern är nere
+// om skrapningen slutat fungera, inte bara om servern är nere.
+// node/express läses ur den körande processen — splashen visar dem, så en
+// uppgradering syns där utan att någon rör texten.
 app.get('/health', (_, res) => res.json({
   status: 'OK',
-  priceCache: cache && Date.now() - cacheTs < CACHE_TTL ? 'warm' : 'cold'
+  priceCache: cache && Date.now() - cacheTs < CACHE_TTL ? 'warm' : 'cold',
+  node: process.versions.node,
+  express: EXPRESS_VERSION
 }));
 
 function resetCache() {
