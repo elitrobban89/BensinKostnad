@@ -185,7 +185,9 @@ app.get('/health', (_, res) => res.json({
   status: 'OK',
   priceCache: cache && Date.now() - cacheTs < CACHE_TTL ? 'warm' : 'cold',
   node: process.versions.node,
-  express: EXPRESS_VERSION
+  express: EXPRESS_VERSION,
+  // Render sätter den i varje deploy; splash-vakten jämför med grenens topp. Lokalt saknas den.
+  deployCommit: process.env.RENDER_GIT_COMMIT ? process.env.RENDER_GIT_COMMIT.slice(0, 7) : undefined
 }));
 
 function resetCache() {
