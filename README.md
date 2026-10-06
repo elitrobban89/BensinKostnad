@@ -189,7 +189,7 @@ Total kostnad = kWh åtgång × laddningspris (SEK/kWh)
 ## WordPress-installation
 
 ### 1. HTML + CSS + JavaScript
-Klistra in hela innehållet från `bensinkostnad-wordpress.html` i ett **Anpassad HTML**-block på sidan. Blocket innehåller `<script src="https://bilresa.onrender.com/bensinkostnad.js" defer>` — kalkylatorlogiken serveras av Render-backenden med 5 min cache, så **en git push deployar även frontenden**. Inget WPCode-snippet behövs längre (det gamla JS-snippetet ska vara raderat/inaktiverat).
+Klistra in hela innehållet från `bensinkostnad-wordpress.html` i ett **Anpassad HTML**-block på sidan. Blocket innehåller `<script src="https://caradvice.onrender.com/bensinkostnad.js" defer>` — kalkylatorlogiken serveras av **CarAdvice**, som ligger på betald plan och aldrig somnar. Bilresa ligger på gratisnivån; hämtades filen därifrån stod kalkylatorn tom i upp till två minuter efter en paus. En ändring i `bensinkostnad.js` går därför live via en push till CarAdvice (filen måste vara identisk i båda repona). Inget WPCode-snippet behövs längre (det gamla JS-snippetet ska vara raderat/inaktiverat).
 
 ### 2. Leaflet
 Leaflet laddas automatiskt via CDN i HTML-blocket — ingen extra installation krävs.
