@@ -33,7 +33,7 @@ En interaktiv webbkalkylator för att beräkna resekostnaden för bensin-, diese
 - **Count-up animation** — siffrorna räknas upp med mjuk animation när resultaten visas
 - **Returresa** — kryssruta som dubblar sträckan; uppdaterar resultaten dynamiskt utan ny sökning
 - **EV-data caching** — CarAdvice API-svar cachas i localStorage med 24 h TTL
-- **Serverdata för bensin/diesel/hybrid** — förbrukningssiffror hämtas från CarAdvice `/api/ice-consumption` (~950 varianter ur `ice_consumption`-tabellen) vid sidladdning, 24 h localStorage-cache; den statiska databasen i JS:en är fallback när API:et inte svarar
+- **Serverdata för bensin/diesel/hybrid** — förbrukningssiffror hämtas från CarAdvice `/api/ice-consumption` (960 varianter ur `ice_consumption`-tabellen) vid sidladdning, 24 h localStorage-cache; den statiska databasen i JS:en är fallback när API:et inte svarar
 - **Demo-läge** — utloggade användare får 3 gratis sökningar; blockeras därefter med login-CTA
 - **Login-medvetenhet** — kalkylator-JS:et läser WordPress `body.logged-in`-klass och injicerar demo-banner + login-CTA dynamiskt
 - **Promo-kort** — komponent för elbilsladdningssidan med login-medveten visning
@@ -69,8 +69,8 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | `src/bilresa-effekter-wpcode.js` / `.html` / `-shortcode.php` | Effekt-snippets för Bilresa-sidan |
 | `src/hemssida-effekter-wpcode.js` | Effekt-snippet för startsidan |
 | `server.js` | Node.js/Express backend — bränsle- och elpris-API + serverar kalkylatorfrontenden (`/bensinkostnad.js`) |
-| `server.test.js` | Backend-testsvit (27 tester) |
-| `frontend.test.js` | Frontend-testsvit — kör kalkylator-JS:et i DOM-stubbad vm-kontext (46 tester) |
+| `server.test.js` | Backend-testsvit (28 tester) |
+| `frontend.test.js` | Frontend-testsvit — kör kalkylator-JS:et i DOM-stubbad vm-kontext (47 tester) |
 | `.github/workflows/node.yml` | CI: syntaxkontroll + testsvit på varje push |
 | `package.json` | Node.js-beroenden |
 | `Dockerfile` | Docker-konfiguration för Render.com |
@@ -134,16 +134,16 @@ docker run -p 3000:3000 bilresa-server
 
 ## Tester & CI
 
-74 tester med Nodes inbyggda testrunner — inga extra beroenden.
+75 tester med Nodes inbyggda testrunner — inga extra beroenden.
 
-**Backend (`server.test.js`, 27 st):**
+**Backend (`server.test.js`, 28 st):**
 
 - **Prisparsningen** — dagspriset ("SEK X per liter or USD") väljs, inte tioårssnittet i meta-taggarna; reservmönstret när dagsraden saknas; fel när SEK-pris saknas helt; HTTP-fel kastar
 - **`/api/fuel-price`** — bensin + diesel ur källan, 12h-cache (andra anropet hämtar inte om), fallback-priser vid nätverksfel, misslyckad hämtning cachas inte, `_source: 'globalpetrolprices-average'` flaggar när reservpriset används (sidlayouten har ändrats)
-- **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, fallback vid nätverksfel eller när prisraden saknas; **billigaste kommande timmen** hittas över dygnsgränsen (morgondagens fil) och saknad morgondagsfil tolereras
+- **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, `?zone=alla` ger alla fyra elområden (zoner som fallerar utelämnas, 503 under två), fallback vid nätverksfel eller när prisraden saknas; **billigaste kommande timmen** hittas över dygnsgränsen (morgondagens fil) och saknad morgondagsfil tolereras
 - **`/bensinkostnad.js`** — svarar 301 mot CarAdvice (filen serveras inte härifrån)
 - **drift-vakten** — hämtar den fil CarAdvice faktiskt serverar och jämför med `src/bensinkostnad-wpcode.js`. Hoppas över när nätet inte svarar; ett rött bygge för att Render är nere säger inget om koden
-- **`/health`** — status OK + CORS-headern; `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
+- **`/health`** — status OK + CORS-headern; versionerna splashen läser (Node 24, Express 5); `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå; omvärmningsintervallet rymmer minst två försök per TTL-fönster så ett enstaka hämtningsfel inte ger falskt cold-larm
 
 **Frontend (`frontend.test.js`, 47 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
