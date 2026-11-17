@@ -306,9 +306,9 @@ test('/health svarar OK och CORS-headern är satt', async () => {
   assert.equal(headers.get('access-control-allow-origin'), '*');
 });
 
-test('/health visar versionerna splashen läser — Node 24 och Express 5', async () => {
+test('/health visar versionerna splashen läser — Node 26 och Express 5', async () => {
   const { body } = await get('/health');
-  assert.match(body.node, /^24\./);
+  assert.match(body.node, /^26\./);
   assert.match(body.express, /^5\./);
 });
 

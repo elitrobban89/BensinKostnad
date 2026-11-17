@@ -94,7 +94,7 @@ Automatlådsvarianter (DSG, DCT, EAT8, EDC, CVT) finns inkluderade för alla pop
 | [Nominatim](https://nominatim.org) | Geocoding + adressautocomplete |
 | [OSRM](http://router.project-osrm.org) | Ruttberäkning |
 | [elprisetjustnu.se](https://www.elprisetjustnu.se) | Spotpris el per elområde (öppet API) |
-| Node.js 24 + Express 5 | Bilresa backend (bilresa.onrender.com) |
+| Node.js 26 + Express 5 | Bilresa backend (bilresa.onrender.com) |
 | [globalpetrolprices.com](https://www.globalpetrolprices.com) | Bränsleprisdata (scraping, uppdateras varje måndag) |
 | WordPress | CMS — kalkylatorn bor i ett Anpassad HTML-block som laddar JS:et från backenden (WPCode avvecklat 2026-07-14) |
 | Docker + Render.com | Backend-hosting |
@@ -143,7 +143,7 @@ docker run -p 3000:3000 bilresa-server
 - **`/api/electricity-price`** — spotpriset för aktuell timme, zonval + normalisering, 400 vid ogiltig zon, cache per zon och timme, `?zone=alla` ger alla fyra elområden (zoner som fallerar utelämnas, 503 under två), fallback vid nätverksfel eller när prisraden saknas; **billigaste kommande timmen** hittas över dygnsgränsen (morgondagens fil) och saknad morgondagsfil tolereras
 - **`/bensinkostnad.js`** — svarar 301 mot CarAdvice (filen serveras inte härifrån)
 - **drift-vakten** — hämtar den fil CarAdvice faktiskt serverar och jämför med `src/bensinkostnad-wpcode.js`. Hoppas över när nätet inte svarar; ett rött bygge för att Render är nere säger inget om koden
-- **`/health`** — status OK + CORS-headern; versionerna splashen läser (Node 24, Express 5); `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
+- **`/health`** — status OK + CORS-headern; versionerna splashen läser (Node 26, Express 5); `priceCache` rapporterar `cold` före och `warm` efter en lyckad prishämtning
 - **`warmUpCache`** — förvärmningen fyller cachen vid start så första anropet svarar direkt; fel sväljs så servern startar ändå; omvärmningsintervallet rymmer minst två försök per TTL-fönster så ett enstaka hämtningsfel inte ger falskt cold-larm
 
 **Frontend (`frontend.test.js`, 47 st):** kör `bensinkostnad-wpcode.js` i en DOM-stubbad vm-kontext —
