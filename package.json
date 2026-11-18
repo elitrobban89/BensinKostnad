@@ -4,7 +4,7 @@
   "description": "Bensinpris-API för Bilresa-kalkylatorn",
   "main": "server.js",
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "dependencies": {
     "express": "^5.3.0"
